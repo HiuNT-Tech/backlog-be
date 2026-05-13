@@ -1,0 +1,15 @@
+import { Role } from '@common/enums/role.enum';
+
+declare global {
+  namespace Express {
+    interface User {
+      sub: string;
+      email: string;
+      role: Role;
+      iat?: number;
+      exp?: number;
+    }
+  }
+}
+
+export {};
