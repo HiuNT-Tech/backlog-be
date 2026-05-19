@@ -3,7 +3,7 @@ import { Role } from '@common/enums/role.enum';
 declare global {
   namespace Express {
     interface User {
-      sub: string;
+      userId: string;
       email: string;
       role: Role;
       iat?: number;

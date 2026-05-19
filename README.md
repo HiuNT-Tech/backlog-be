@@ -2,26 +2,92 @@
 
 Base code backend NestJS cho dự án production: TypeScript, PostgreSQL, MongoDB, Prisma, Docker, JWT auth, ConfigModule, Joi env validation và cấu trúc tách controller/service/repository rõ ràng.
 
-## Cài dependency
+## Yêu cầu
+
+- Node.js + npm
+- Docker + Docker Compose
+
+## Hướng dẫn chạy nhanh
+
+Chạy trong thư mục dự án:
 
 ```bash
+cd /home/hiunt/Documents/Backlog/be_02
 npm install
 ```
 
-## Tạo env
+Tạo file môi trường nếu chưa có:
 
 ```bash
 cp .env.example .env
 ```
 
-Sửa các biến quan trọng trong `.env`: `DATABASE_URL`, `MONGODB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`.
+Kiểm tra các biến quan trọng trong `.env`:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/be_02?schema=public
+MONGODB_URI=mongodb://localhost:27017/be_02
+JWT_ACCESS_SECRET=change-me-access-secret
+JWT_REFRESH_SECRET=change-me-refresh-secret
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+`JWT_ACCESS_SECRET` và `JWT_REFRESH_SECRET` cần tối thiểu 16 ký tự.
 
 PostgreSQL dùng qua Prisma cho dữ liệu quan hệ. MongoDB chỉ lưu collection `users` cho auth/user profile.
 
-## Chạy Docker dev
+## Cách khuyên dùng khi dev/debug
+
+Trong lúc code nhanh, chỉ chạy database/service phụ bằng Docker. NestJS chạy local bằng terminal để xem `console.log`, đặt breakpoint và reload nhanh hơn.
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+npm run dev:infra
+```
+
+Lệnh này chạy:
+
+```text
+postgres
+mongo
+redis
+```
+
+Generate Prisma client và apply migration:
+
+```bash
+npm run prisma:generate
+npm run prisma:deploy
+```
+
+Seed admin mẫu nếu database mới:
+
+```bash
+npm run db:seed
+```
+
+Chạy NestJS local:
+
+```bash
+npm run start:dev
+```
+
+Hoặc chạy kèm debugger:
+
+```bash
+npm run start:debug
+```
+
+Có thể dùng lệnh gộp cho local dev:
+
+```bash
+npm run dev:local
+```
+
+Hoặc lệnh gộp cho debug:
+
+```bash
+npm run dev:debug
 ```
 
 API mặc định chạy ở:
@@ -30,11 +96,68 @@ API mặc định chạy ở:
 http://localhost:3000/api/v1
 ```
 
-## Chạy database riêng
+Kiểm tra API:
 
 ```bash
-docker compose -f docker-compose.dev.yml up postgres mongo redis
+curl http://localhost:3000/api/v1/health
 ```
+
+Xem log service phụ:
+
+```bash
+npm run dev:infra:logs
+```
+
+Tắt service phụ:
+
+```bash
+npm run dev:infra:down
+```
+
+## Chạy full bằng Docker
+
+Khi muốn test gần giống production hoặc chạy theo team/CI, dùng Docker Compose full:
+
+```bash
+docker compose up --build
+```
+
+API mặc định chạy ở:
+
+```text
+http://localhost:3000/api/v1
+```
+
+## Start dev local
+
+```bash
+npm run dev:infra
+npm run start:dev
+```
+
+## Debug local
+
+Debug nhanh bằng log:
+
+```ts
+console.log('LOGIN DTO:', dto);
+console.dir(user, { depth: null });
+```
+
+Nếu muốn dừng request giống `dd()` trong Laravel:
+
+```ts
+console.dir(user, { depth: null });
+throw new Error('DEBUG STOP');
+```
+
+Debug bằng breakpoint:
+
+```bash
+npm run dev:debug
+```
+
+Sau đó attach debugger từ VS Code/WebStorm vào Node port `9229`.
 
 ## Prisma
 
@@ -69,11 +192,45 @@ email: admin@example.com
 password: Admin@123456
 ```
 
-## Start dev local
+## Logging
+
+Dự án dùng custom logger dựa trên NestJS `ConsoleLogger`.
+
+Khi chạy local bằng terminal, `console.log` và Nest logger hiện trực tiếp trong terminal đang chạy:
 
 ```bash
 npm run start:dev
 ```
+
+Khi chạy full Docker, xem log API bằng:
+
+```bash
+docker compose logs -f api
+```
+
+Đồng thời log app được ghi vào file:
+
+```text
+logs/app.log
+logs/error.log
+```
+
+- `logs/app.log`: ghi tất cả level log/warn/error/debug/verbose/fatal.
+- `logs/error.log`: chỉ ghi lỗi `error` và `fatal`.
+
+Khi API lỗi, response sẽ có thêm `requestId` để đối chiếu với file log:
+
+```json
+{
+  "statusCode": 500,
+  "requestId": "d5d19d7f-cc4f-42cf-9183-2d83f5d0cf49",
+  "path": "/api/v1/products",
+  "method": "POST",
+  "message": "Internal server error"
+}
+```
+
+Trong file log, tìm theo `requestId` để xem stack trace và thông tin chi tiết.
 
 ## API mẫu
 
@@ -92,13 +249,20 @@ npm run start:dev
 - `DELETE /api/v1/products/:id`
 - `GET /api/v1/health`
 
-Response success được wrap dạng:
+Response success không phân trang:
 
 ```json
 {
-  "success": true,
-  "data": {},
-  "timestamp": "2026-05-13T00:00:00.000Z"
+  "item": {}
+}
+```
+
+Response success có phân trang:
+
+```json
+{
+  "items": [],
+  "total": 0
 }
 ```
 
@@ -106,12 +270,11 @@ Response error được format dạng:
 
 ```json
 {
-  "success": false,
   "statusCode": 400,
+  "requestId": "d5d19d7f-cc4f-42cf-9183-2d83f5d0cf49",
   "path": "/api/v1/example",
   "method": "POST",
-  "message": "Validation failed",
-  "timestamp": "2026-05-13T00:00:00.000Z"
+  "message": "Validation failed"
 }
 ```
 

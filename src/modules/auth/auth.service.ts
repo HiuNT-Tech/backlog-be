@@ -26,6 +26,13 @@ type AuthResponse = {
   user: AuthUserResponse;
 };
 
+type AuthUserSource = {
+  id: string;
+  email: string;
+  name: string;
+  role: Role | string;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -70,7 +77,11 @@ export class AuthService {
   }
 
   async me(payload: JwtPayload): Promise<AuthUserResponse> {
-    const user = await this.usersService.findOne(payload.sub);
+    const user = await this.usersService.findByIdForAuth(payload.userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid token');
+    }
 
     if (!user.isActive) {
       throw new UnauthorizedException('Inactive user');
@@ -104,18 +115,18 @@ export class AuthService {
 
   private toPayload(user: AuthUserResponse): JwtPayload {
     return {
-      sub: user.id,
+      userId: user.id,
       email: user.email,
       role: user.role,
     };
   }
 
-  private toAuthUser(user: UserResponseDto): AuthUserResponse {
+  private toAuthUser(user: AuthUserSource): AuthUserResponse {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: user.role as Role,
     };
   }
 }

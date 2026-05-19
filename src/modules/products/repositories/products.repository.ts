@@ -41,8 +41,8 @@ export class ProductsRepository extends BasePrismaRepository<
   }
 
   findById(id: string): Promise<Product | null> {
-    return this.findOne({
-      where: { id },
+    return this.findFirst({
+      where: { id, isActive: true },
     });
   }
 

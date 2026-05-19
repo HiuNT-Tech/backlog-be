@@ -18,7 +18,7 @@ export class UserMongo {
   @Prop({ required: true })
   password: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null, trim: true })
   phone: string | null;
 
   @Prop({ enum: Object.values(Role), default: Role.USER })

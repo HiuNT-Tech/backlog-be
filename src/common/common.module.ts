@@ -5,9 +5,11 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
 import { TimeoutInterceptor } from './interceptors/timeout.interceptor';
+import { FileLogger } from './logger';
 
 @Module({
   providers: [
+    FileLogger,
     HttpExceptionFilter,
     ResponseInterceptor,
     TimeoutInterceptor,
@@ -20,6 +22,11 @@ import { TimeoutInterceptor } from './interceptors/timeout.interceptor';
       useClass: RolesGuard,
     },
   ],
-  exports: [HttpExceptionFilter, ResponseInterceptor, TimeoutInterceptor],
+  exports: [
+    FileLogger,
+    HttpExceptionFilter,
+    ResponseInterceptor,
+    TimeoutInterceptor,
+  ],
 })
 export class CommonModule {}

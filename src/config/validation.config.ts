@@ -8,6 +8,9 @@ export const validationSchema = Joi.object({
   APP_NAME: Joi.string().default('nestjs-production-base'),
   PORT: Joi.number().port().default(3000),
   API_PREFIX: Joi.string().default('api/v1'),
+  CORS_ORIGINS: Joi.string().allow('').default(''),
+  LOG_DIR: Joi.string().default('logs'),
+  LOG_MAX_FILE_SIZE_BYTES: Joi.number().integer().min(1024).default(10_485_760),
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['postgresql', 'postgres'] })
     .required(),

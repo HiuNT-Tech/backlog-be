@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { JwtPayload } from '@/types/jwt-payload.type';
 
-type TokenPayload = Pick<JwtPayload, 'sub' | 'email' | 'role'>;
+type TokenPayload = Pick<JwtPayload, 'userId' | 'email' | 'role'>;
 
 @Injectable()
 export class TokenService {
