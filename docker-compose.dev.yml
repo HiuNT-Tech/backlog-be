@@ -1,30 +1,4 @@
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: be_02_api_dev
-    command: sh -c "npx prisma generate && npm run start:dev"
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/be_02?schema=public
-      MONGODB_URI: mongodb://mongo:27017/be_02
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    volumes:
-      - .:/app
-      - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
-      mongo:
-        condition: service_started
-      redis:
-        condition: service_started
-
   postgres:
     image: postgres:16-alpine
     container_name: be_02_postgres_dev

@@ -62,12 +62,7 @@ export class UsersService {
 
     return {
       items: users.map((user) => this.toResponse(user)),
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      total,
     };
   }
 
@@ -78,6 +73,10 @@ export class UsersService {
 
   findByEmailWithPassword(email: string): Promise<UserEntity | null> {
     return this.usersRepository.findByEmail(normalizeEmail(email));
+  }
+
+  findByIdForAuth(id: string): Promise<UserEntity | null> {
+    return this.usersRepository.findById(id);
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {
@@ -109,7 +108,7 @@ export class UsersService {
   }
 
   private async findExistingById(id: string): Promise<UserEntity> {
-    const user = await this.usersRepository.findById(id);
+    const user = await this.usersRepository.findActiveById(id);
 
     if (!user) {
       this.throwUserNotFound();

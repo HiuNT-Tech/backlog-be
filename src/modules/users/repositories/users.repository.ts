@@ -60,6 +60,13 @@ export class UsersRepository {
     return user ? this.toEntity(user) : null;
   }
 
+  async findActiveById(id: string): Promise<UserEntity | null> {
+    const user = await this.userModel
+      .findOne({ _id: id, isActive: true })
+      .exec();
+    return user ? this.toEntity(user) : null;
+  }
+
   async findByEmail(email: string): Promise<UserEntity | null> {
     const user = await this.userModel.findOne({ email }).exec();
     return user ? this.toEntity(user) : null;
@@ -72,8 +79,8 @@ export class UsersRepository {
 
   async update(id: string, data: UpdateUserData): Promise<UserEntity | null> {
     const user = await this.userModel
-      .findByIdAndUpdate(
-        id,
+      .findOneAndUpdate(
+        { _id: id, isActive: true },
         { $set: omitUndefined(data) },
         { new: true, runValidators: true },
       )
@@ -84,8 +91,8 @@ export class UsersRepository {
 
   async softDelete(id: string): Promise<UserEntity | null> {
     const user = await this.userModel
-      .findByIdAndUpdate(
-        id,
+      .findOneAndUpdate(
+        { _id: id, isActive: true },
         {
           $set: {
             isActive: false,

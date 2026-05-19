@@ -11,6 +11,7 @@ export const CurrentUser = createParamDecorator(
       return undefined;
     }
 
-    return data ? user[data] : user;
+    const jwtPayload: JwtPayload = user;
+    return data ? jwtPayload[data] : jwtPayload;
   },
 );

@@ -61,7 +61,7 @@ export class ProductsService {
 
     return {
       items: products.items.map((product) => this.toResponse(product)),
-      meta: products.meta,
+      total: products.total,
     };
   }
 

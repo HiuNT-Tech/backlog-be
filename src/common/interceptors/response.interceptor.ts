@@ -6,28 +6,43 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { ItemResponse, PaginatedResponse } from '@common/dto/response.dto';
 
-type ApiSuccessResponse<T> = {
-  success: true;
-  data: T;
-  timestamp: string;
-};
+type ApiResponse<T> =
+  T extends PaginatedResponse<infer TItem>
+    ? PaginatedResponse<TItem>
+    : ItemResponse<T>;
 
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<
   T,
-  ApiSuccessResponse<T>
+  ApiResponse<T>
 > {
   intercept(
     _context: ExecutionContext,
     next: CallHandler<T>,
-  ): Observable<ApiSuccessResponse<T>> {
-    return next.handle().pipe(
-      map((data) => ({
-        success: true,
-        data,
-        timestamp: new Date().toISOString(),
-      })),
-    );
+  ): Observable<ApiResponse<T>> {
+    return next.handle().pipe(map((data) => this.toResponse(data)));
+  }
+
+  private toResponse(data: T): ApiResponse<T> {
+    if (this.isPaginatedResponse(data)) {
+      return data as ApiResponse<T>;
+    }
+
+    return {
+      item: data,
+    } as ApiResponse<T>;
+  }
+
+  private isPaginatedResponse(
+    value: unknown,
+  ): value is PaginatedResponse<unknown> {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    const response = value as Record<string, unknown>;
+    return Array.isArray(response.items) && typeof response.total === 'number';
   }
 }

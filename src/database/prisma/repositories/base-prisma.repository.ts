@@ -145,12 +145,7 @@ export abstract class BasePrismaRepository<TDelegate> {
 
     return {
       items: items as ArrayItem<Prisma.Result<TDelegate, TArgs, 'findMany'>>[],
-      meta: {
-        page,
-        limit,
-        total: Number(total),
-        totalPages: Math.ceil(Number(total) / limit),
-      },
+      total: Number(total),
     };
   }
 
