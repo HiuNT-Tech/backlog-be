@@ -18,6 +18,7 @@ type CreateUserData = {
   password: string;
   phone?: string;
   role: Role;
+  verifyToken: string;
 };
 
 type UpdateUserData = Partial<
@@ -72,8 +73,34 @@ export class UsersRepository {
     return user ? this.toEntity(user) : null;
   }
 
+  async verifyAccount(id: string, token: string): Promise<UserEntity | null> {
+    const user = await this.userModel
+      .findOneAndUpdate(
+        { _id: id, verifyToken: token },
+        {
+          $set: {
+            isActive: true,
+            verifyToken: null,
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    return user ? this.toEntity(user) : null;
+  }
+
   async create(data: CreateUserData): Promise<UserEntity> {
-    const user = await this.userModel.create(data);
+    const nameFromEmail = data.email.split('@')[0];
+    const displayName = data.name || nameFromEmail;
+    const user = await this.userModel.create({
+      ...data,
+      username: nameFromEmail,
+      displayName,
+      avatar: null,
+      userCode: data.verifyToken,
+      _destroy: false,
+    });
     return this.toEntity(user);
   }
 
@@ -106,16 +133,28 @@ export class UsersRepository {
   }
 
   private toEntity(user: UserMongoDocument): UserEntity {
+    const id = user._id.toString();
+    const emailName = user.email.split('@')[0];
+    const displayName =
+      user.displayName ?? user.name ?? user.username ?? emailName;
+    const username = user.username ?? emailName;
+
     return {
-      id: user._id.toString(),
+      id,
+      _id: id,
       email: user.email,
-      name: user.name,
+      name: user.name ?? displayName,
+      username,
+      displayName,
+      avatar: user.avatar ?? null,
+      userCode: user.userCode ?? null,
       password: user.password,
-      phone: user.phone,
-      role: user.role,
+      phone: user.phone ?? null,
+      role: user.role ?? Role.USER,
+      verifyToken: user.verifyToken,
       isActive: user.isActive,
       createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      updatedAt: user.updatedAt ?? null,
     };
   }
 }

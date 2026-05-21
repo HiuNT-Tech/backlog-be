@@ -12,8 +12,20 @@ export class UserMongo {
   @Prop({ required: true, lowercase: true, trim: true })
   email: string;
 
-  @Prop({ required: true, trim: true })
-  name: string;
+  @Prop({ trim: true })
+  name?: string;
+
+  @Prop({ trim: true })
+  username?: string;
+
+  @Prop({ trim: true })
+  displayName?: string;
+
+  @Prop({ type: String, default: null })
+  avatar?: string | null;
+
+  @Prop({ trim: true })
+  userCode?: string;
 
   @Prop({ required: true })
   password: string;
@@ -24,8 +36,14 @@ export class UserMongo {
   @Prop({ enum: Object.values(Role), default: Role.USER })
   role: Role;
 
-  @Prop({ default: true })
+  @Prop({ type: String, default: null })
+  verifyToken: string | null;
+
+  @Prop({ default: false })
   isActive: boolean;
+
+  @Prop({ default: false })
+  _destroy?: boolean;
 
   createdAt: Date;
 
