@@ -4,7 +4,7 @@ import { ErrorCode } from '@common/exceptions/error-code';
 import { PaginatedResponse } from '@common/dto/response.dto';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { Role } from '@common/enums/role.enum';
-import { hashPassword } from '@common/utils/crypto.util';
+import { hashPassword, generateRandomToken } from '@common/utils/crypto.util';
 import { normalizeEmail } from '@common/utils/string.util';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -37,6 +37,7 @@ export class UsersService {
       password,
       phone: dto.phone,
       role: dto.role ?? Role.USER,
+      verifyToken: generateRandomToken(),
     });
 
     return this.toResponse(user);
@@ -77,6 +78,16 @@ export class UsersService {
 
   findByIdForAuth(id: string): Promise<UserEntity | null> {
     return this.usersRepository.findById(id);
+  }
+
+  async verifyAccount(id: string, token: string): Promise<UserResponseDto> {
+    const user = await this.usersRepository.verifyAccount(id, token);
+
+    if (!user) {
+      this.throwUserNotFound();
+    }
+
+    return this.toResponse(user);
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {

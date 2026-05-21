@@ -20,6 +20,12 @@ export class TokenService {
     return this.jwtService.signAsync(payload, this.getRefreshTokenOptions());
   }
 
+  verifyRefreshToken(token: string): Promise<JwtPayload> {
+    return this.jwtService.verifyAsync<JwtPayload>(token, {
+      secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
+    });
+  }
+
   private getAccessTokenOptions(): JwtSignOptions {
     return {
       secret: this.configService.getOrThrow<string>('jwt.accessSecret'),

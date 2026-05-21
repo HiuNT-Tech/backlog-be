@@ -224,7 +224,7 @@ Khi API lỗi, response sẽ có thêm `requestId` để đối chiếu với fi
 {
   "statusCode": 500,
   "requestId": "d5d19d7f-cc4f-42cf-9183-2d83f5d0cf49",
-  "path": "/api/v1/products",
+  "path": "/api/v1/users",
   "method": "POST",
   "message": "Internal server error"
 }
@@ -242,11 +242,6 @@ Trong file log, tìm theo `requestId` để xem stack trace và thông tin chi t
 - `POST /api/v1/users`
 - `PATCH /api/v1/users/:id`
 - `DELETE /api/v1/users/:id`
-- `GET /api/v1/products?page=1&limit=10&sortBy=createdAt&sortOrder=desc`
-- `GET /api/v1/products/:id`
-- `POST /api/v1/products`
-- `PATCH /api/v1/products/:id`
-- `DELETE /api/v1/products/:id`
 - `GET /api/v1/health`
 
 Response success không phân trang:
@@ -301,31 +296,6 @@ Quy tắc chính:
 - Config mới đặt trong `src/config`.
 - Common không chứa business logic.
 - Shared chỉ chứa service hạ tầng.
-
-Repository PostgreSQL/Prisma có thể kế thừa `BasePrismaRepository`:
-
-```ts
-export class ProductsRepository extends BasePrismaRepository<
-  PrismaService['product']
-> {
-  constructor(prisma: PrismaService) {
-    super(prisma.product);
-  }
-}
-```
-
-Query phân trang dùng `paginate`:
-
-```ts
-return this.paginate({
-  page: query.page,
-  limit: query.limit,
-  args: {
-    where: { isActive: true },
-    orderBy: { createdAt: 'desc' },
-  },
-});
-```
 
 ## Tạo module mới
 

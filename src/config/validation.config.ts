@@ -17,6 +17,7 @@ export const validationSchema = Joi.object({
   MONGODB_URI: Joi.string()
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })
     .required(),
+  DATABASE_NAME: Joi.string().allow('').optional(),
   JWT_ACCESS_SECRET: Joi.string().min(16).required(),
   JWT_REFRESH_SECRET: Joi.string().min(16).required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
