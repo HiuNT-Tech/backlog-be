@@ -2,7 +2,6 @@ import { Role } from '@common/enums/role.enum';
 
 export type UserResponseSource = {
   id: string;
-  _id: string;
   email: string;
   name: string;
   username: string;
@@ -12,14 +11,13 @@ export type UserResponseSource = {
   phone: string | null;
   role: Role | string;
   isActive: boolean;
-  createdAt: Date | number;
-  updatedAt: Date | number | null;
+  createdAt: Date;
+  updatedAt: Date;
   verifyToken: string | null;
 };
 
 export class UserResponseDto {
   id: string;
-  _id: string;
   email: string;
   name: string;
   username: string;
@@ -30,12 +28,11 @@ export class UserResponseDto {
   role: Role;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string | null;
+  updatedAt: string;
   verifyToken: string | null;
 
   constructor(user: UserResponseSource) {
     this.id = user.id;
-    this._id = user._id;
     this.email = user.email;
     this.name = user.name;
     this.username = user.username;
@@ -45,15 +42,8 @@ export class UserResponseDto {
     this.phone = user.phone;
     this.role = user.role as Role;
     this.isActive = user.isActive;
-    this.createdAt = this.toIsoString(user.createdAt);
-    this.updatedAt =
-      user.updatedAt === null ? null : this.toIsoString(user.updatedAt);
+    this.createdAt = user.createdAt.toISOString();
+    this.updatedAt = user.updatedAt.toISOString();
     this.verifyToken = user.verifyToken;
-  }
-
-  private toIsoString(value: Date | number): string {
-    return value instanceof Date
-      ? value.toISOString()
-      : new Date(value).toISOString();
   }
 }

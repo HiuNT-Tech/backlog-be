@@ -17,7 +17,6 @@ import { TokenService } from './token.service';
 
 type AuthUserResponse = {
   id: string;
-  _id: string;
   email: string;
   name: string;
   username: string;
@@ -43,12 +42,11 @@ type LegacyUserResponse = {
   role: Role;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string | null;
+  updatedAt: string;
 };
 
 type AuthUserSource = {
   id: string;
-  _id?: string;
   email: string;
   name: string;
   username?: string;
@@ -226,7 +224,6 @@ export class AuthService {
 
   private toPayload(user: AuthUserResponse): JwtPayload {
     return {
-      _id: user.id,
       userId: user.id,
       email: user.email,
       role: user.role,
@@ -236,7 +233,6 @@ export class AuthService {
   private toAuthUser(user: AuthUserSource): AuthUserResponse {
     return {
       id: user.id,
-      _id: user._id ?? user.id,
       email: user.email,
       name: user.name,
       username: user.username ?? user.email.split('@')[0],
@@ -249,7 +245,7 @@ export class AuthService {
 
   private toLegacyUser(user: UserResponseDto): LegacyUserResponse {
     return {
-      _id: user._id,
+      _id: user.id,
       email: user.email,
       username: user.username,
       displayName: user.displayName,

@@ -31,7 +31,7 @@ export class UsersService {
     }
 
     const password = await hashPassword(dto.password);
-    const user = await this.usersRepository.create({
+    const user = await this.usersRepository.createUser({
       email,
       name: dto.name,
       password,
@@ -52,13 +52,13 @@ export class UsersService {
     const sortBy = this.normalizeSortBy(query.sortBy);
 
     const [users, total] = await Promise.all([
-      this.usersRepository.findMany({
+      this.usersRepository.findManyUsers({
         skip,
         take: limit,
         sortBy,
         sortOrder: query.sortOrder,
       }),
-      this.usersRepository.countActive(),
+      this.usersRepository.countActiveUsers(),
     ]);
 
     return {
@@ -93,7 +93,7 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {
     await this.findExistingById(id);
 
-    const user = await this.usersRepository.update(id, {
+    const user = await this.usersRepository.updateUser(id, {
       name: dto.name,
       phone: dto.phone,
       role: dto.role,

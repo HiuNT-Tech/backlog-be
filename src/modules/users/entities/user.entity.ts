@@ -2,7 +2,6 @@ import { Role } from '@common/enums/role.enum';
 
 export class UserEntity {
   id: string;
-  _id: string;
   email: string;
   name: string;
   username: string;
@@ -14,6 +13,7 @@ export class UserEntity {
   role: Role;
   verifyToken: string | null;
   isActive: boolean;
-  createdAt: Date | number;
-  updatedAt: Date | number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
 }

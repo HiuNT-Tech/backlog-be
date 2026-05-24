@@ -4,7 +4,6 @@ import {
   appConfig,
   databaseConfig,
   jwtConfig,
-  mongodbConfig,
   redisConfig,
   validationSchema,
 } from '@config/index';
@@ -21,7 +20,7 @@ import { AppController } from './app.controller';
       isGlobal: true,
       cache: true,
       envFilePath: ['.env'],
-      load: [appConfig, databaseConfig, mongodbConfig, jwtConfig, redisConfig],
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig],
       validationSchema,
       validationOptions: {
         allowUnknown: true,

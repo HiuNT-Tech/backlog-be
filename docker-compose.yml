@@ -5,19 +5,21 @@ services:
       dockerfile: Dockerfile
     container_name: be_02_api
     ports:
-      - "3000:3000"
+      - "${PORT}:3000"
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/be_02?schema=public
-      MONGODB_URI: mongodb://mongo:27017/be_02
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      POSTGRES_HOST: ${DOCKER_POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA}
+      REDIS_HOST: ${DOCKER_REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
       postgres:
         condition: service_healthy
-      mongo:
-        condition: service_started
       redis:
         condition: service_started
 
@@ -26,13 +28,13 @@ services:
     container_name: be_02_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: be_02
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d be_02"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -44,14 +46,6 @@ services:
     volumes:
       - redis_data:/data
 
-  mongo:
-    image: mongo:7
-    container_name: be_02_mongo
-    restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
-
 volumes:
   postgres_data:
-  mongo_data:
   redis_data:

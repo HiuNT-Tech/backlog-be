@@ -13,11 +13,13 @@ export const validationSchema = Joi.object({
   LOG_MAX_FILE_SIZE_BYTES: Joi.number().integer().min(1024).default(10_485_760),
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['postgresql', 'postgres'] })
-    .required(),
-  MONGODB_URI: Joi.string()
-    .uri({ scheme: ['mongodb', 'mongodb+srv'] })
-    .required(),
-  DATABASE_NAME: Joi.string().allow('').optional(),
+    .optional(),
+  POSTGRES_HOST: Joi.string().hostname().default('localhost'),
+  POSTGRES_PORT: Joi.number().port().default(5432),
+  POSTGRES_USER: Joi.string().default('postgres'),
+  POSTGRES_PASSWORD: Joi.string().allow('').default('postgres'),
+  POSTGRES_DB: Joi.string().default('be_02'),
+  POSTGRES_SCHEMA: Joi.string().default('public'),
   JWT_ACCESS_SECRET: Joi.string().min(16).required(),
   JWT_REFRESH_SECRET: Joi.string().min(16).required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
