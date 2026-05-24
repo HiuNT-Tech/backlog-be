@@ -1,6 +1,6 @@
 # NestJS Production Base
 
-Base code backend NestJS cho dự án production: TypeScript, PostgreSQL, MongoDB, Prisma, Docker, JWT auth, ConfigModule, Joi env validation và cấu trúc tách controller/service/repository rõ ràng.
+Base code backend NestJS cho dự án production: TypeScript, PostgreSQL, Prisma, Docker, JWT auth, ConfigModule, Joi env validation và cấu trúc tách controller/service/repository rõ ràng.
 
 ## Yêu cầu
 
@@ -25,17 +25,23 @@ cp .env.example .env
 Kiểm tra các biến quan trọng trong `.env`:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/be_02?schema=public
-MONGODB_URI=mongodb://localhost:27017/be_02
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=be_02
+POSTGRES_SCHEMA=public
+DOCKER_POSTGRES_HOST=postgres
 JWT_ACCESS_SECRET=change-me-access-secret
 JWT_REFRESH_SECRET=change-me-refresh-secret
 REDIS_HOST=localhost
+DOCKER_REDIS_HOST=redis
 REDIS_PORT=6379
 ```
 
 `JWT_ACCESS_SECRET` và `JWT_REFRESH_SECRET` cần tối thiểu 16 ký tự.
 
-PostgreSQL dùng qua Prisma cho dữ liệu quan hệ. MongoDB chỉ lưu collection `users` cho auth/user profile.
+PostgreSQL dùng qua Prisma cho dữ liệu quan hệ và user/auth.
 
 ## Cách khuyên dùng khi dev/debug
 
@@ -49,7 +55,6 @@ Lệnh này chạy:
 
 ```text
 postgres
-mongo
 redis
 ```
 
@@ -279,7 +284,7 @@ Response error được format dạng:
 src/
   config/      ConfigModule config + Joi validation
   common/      decorator, guard, filter, interceptor, pipe, util, enum, constant
-  database/    Prisma PostgreSQL + MongoDB connection module
+  database/    Prisma PostgreSQL connection module
   modules/     business domain modules
   shared/      infrastructure services: mail, redis, storage, queue
   types/       shared TypeScript types

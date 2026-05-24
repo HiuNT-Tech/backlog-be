@@ -6,3 +6,29 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  username      String
+  displayName   String    @map("display_name")
+  avatar        String?
+  userCode      String?   @map("user_code")
+  password      String
+  phone         String?
+  role          Role      @default(USER)
+  verifyToken   String?   @map("verify_token")
+  isActive      Boolean   @default(false) @map("is_active")
+  legacyMongoId String?   @unique @map("legacy_mongo_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  @@map("users")
+}

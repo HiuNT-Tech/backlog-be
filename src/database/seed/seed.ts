@@ -1,43 +1,39 @@
 import 'dotenv/config';
-import mongoose from 'mongoose';
-import { Role } from '@common/enums/role.enum';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient, Role } from '@prisma/client';
 import { hashPassword } from '@common/utils/crypto.util';
-import { UserMongo, UserSchema } from '@modules/users/schemas/user.schema';
-
-const UserModel = mongoose.model(UserMongo.name, UserSchema);
+import { buildPostgresUrl } from '@config/database-url.util';
 
 async function main(): Promise<void> {
-  const mongodbUri = process.env.MONGODB_URI;
+  const connectionString = buildPostgresUrl();
 
-  if (!mongodbUri) {
-    throw new Error('MONGODB_URI is required');
-  }
-
-  await mongoose.connect(mongodbUri);
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
+  const prisma = new PrismaClient({ adapter });
 
   const email = 'admin@example.com';
   const password = await hashPassword('Admin@123456');
 
-  await UserModel.updateOne(
-    { email },
-    {
-      $setOnInsert: {
-        email,
-        name: 'Admin',
-        password,
-        role: Role.ADMIN,
-      },
+  await prisma.user.upsert({
+    where: { email },
+    update: {},
+    create: {
+      email,
+      name: 'Admin',
+      username: 'admin',
+      displayName: 'Admin',
+      password,
+      role: Role.ADMIN,
+      isActive: true,
     },
-    { upsert: true, runValidators: true },
-  ).exec();
+  });
+
+  await prisma.$disconnect();
+  await pool.end();
 }
 
-main()
-  .then(async () => {
-    await mongoose.disconnect();
-  })
-  .catch(async (error: unknown) => {
-    console.error(error);
-    await mongoose.disconnect();
-    process.exit(1);
-  });
+main().catch(async (error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

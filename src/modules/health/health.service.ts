@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection, STATES } from 'mongoose';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
 
@@ -12,7 +10,6 @@ export type HealthStatus = {
   uptime: number;
   services: {
     postgres: DependencyStatus;
-    mongodb: DependencyStatus;
     redis: DependencyStatus;
   };
 };
@@ -21,18 +18,15 @@ export type HealthStatus = {
 export class HealthService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectConnection() private readonly mongoConnection: Connection,
     private readonly redisService: RedisService,
   ) {}
 
   async check(): Promise<HealthStatus> {
-    const mongodb = this.checkMongoDb();
     const [postgres, redis] = await Promise.all([
       this.checkPostgres(),
       this.checkRedis(),
     ]);
-    const status =
-      postgres === 'up' && mongodb === 'up' && redis === 'up' ? 'ok' : 'error';
+    const status = postgres === 'up' && redis === 'up' ? 'ok' : 'error';
 
     return {
       status,
@@ -40,7 +34,6 @@ export class HealthService {
       uptime: process.uptime(),
       services: {
         postgres,
-        mongodb,
         redis,
       },
     };
@@ -53,10 +46,6 @@ export class HealthService {
     } catch {
       return 'down';
     }
-  }
-
-  private checkMongoDb(): DependencyStatus {
-    return this.mongoConnection.readyState === STATES.connected ? 'up' : 'down';
   }
 
   private async checkRedis(): Promise<DependencyStatus> {

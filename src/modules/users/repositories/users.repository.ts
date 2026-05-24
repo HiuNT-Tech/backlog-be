@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, SortOrder } from 'mongoose';
+import { Prisma } from '@prisma/client';
 import { Role } from '@common/enums/role.enum';
+import { PrismaService } from '@database/prisma/prisma.service';
+import { BasePrismaRepository } from '@database/prisma/repositories';
 import { UserEntity } from '../entities/user.entity';
-import { UserMongo, UserMongoDocument } from '../schemas/user.schema';
 
 type FindManyUsersParams = {
   skip: number;
   take: number;
   sortBy: keyof Pick<UserEntity, 'createdAt' | 'updatedAt' | 'email' | 'name'>;
-  sortOrder: SortOrder;
+  sortOrder: 'asc' | 'desc';
 };
 
 type CreateUserData = {
@@ -25,136 +25,156 @@ type UpdateUserData = Partial<
   Pick<UserEntity, 'name' | 'phone' | 'role' | 'isActive'>
 >;
 
-type MongoUpdateValue = string | boolean | null;
+const ACTIVE_FILTER: Prisma.UserWhereInput = {
+  isActive: true,
+  deletedAt: null,
+};
 
-type MongoUpdateData = Partial<Record<keyof UpdateUserData, MongoUpdateValue>>;
-
-const omitUndefined = (data: UpdateUserData): MongoUpdateData =>
+const omitUndefined = <T extends Record<string, unknown>>(
+  data: T,
+): Partial<T> =>
   Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined),
-  );
+  ) as Partial<T>;
 
 @Injectable()
-export class UsersRepository {
-  constructor(
-    @InjectModel(UserMongo.name)
-    private readonly userModel: Model<UserMongo>,
-  ) {}
+export class UsersRepository extends BasePrismaRepository<
+  PrismaService['user']
+> {
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma.user);
+  }
 
-  async findMany(params: FindManyUsersParams): Promise<UserEntity[]> {
-    const users = await this.userModel
-      .find({ isActive: true })
-      .skip(params.skip)
-      .limit(params.take)
-      .sort({ [params.sortBy]: params.sortOrder })
-      .exec();
+  async findManyUsers(params: FindManyUsersParams): Promise<UserEntity[]> {
+    const users = await this.delegate.findMany({
+      where: ACTIVE_FILTER,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { [params.sortBy]: params.sortOrder },
+    });
 
     return users.map((user) => this.toEntity(user));
   }
 
-  countActive(): Promise<number> {
-    return this.userModel.countDocuments({ isActive: true }).exec();
+  countActiveUsers(): Promise<number> {
+    return this.delegate.count({ where: ACTIVE_FILTER });
   }
 
   async findById(id: string): Promise<UserEntity | null> {
-    const user = await this.userModel.findById(id).exec();
+    const user = await this.delegate.findUnique({ where: { id } });
     return user ? this.toEntity(user) : null;
   }
 
   async findActiveById(id: string): Promise<UserEntity | null> {
-    const user = await this.userModel
-      .findOne({ _id: id, isActive: true })
-      .exec();
+    const user = await this.delegate.findFirst({
+      where: { id, ...ACTIVE_FILTER },
+    });
     return user ? this.toEntity(user) : null;
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
-    const user = await this.userModel.findOne({ email }).exec();
+    const user = await this.delegate.findUnique({ where: { email } });
     return user ? this.toEntity(user) : null;
   }
 
   async verifyAccount(id: string, token: string): Promise<UserEntity | null> {
-    const user = await this.userModel
-      .findOneAndUpdate(
-        { _id: id, verifyToken: token },
-        {
-          $set: {
-            isActive: true,
-            verifyToken: null,
-          },
-        },
-        { new: true, runValidators: true },
-      )
-      .exec();
-
-    return user ? this.toEntity(user) : null;
-  }
-
-  async create(data: CreateUserData): Promise<UserEntity> {
-    const nameFromEmail = data.email.split('@')[0];
-    const displayName = data.name || nameFromEmail;
-    const user = await this.userModel.create({
-      ...data,
-      username: nameFromEmail,
-      displayName,
-      avatar: null,
-      userCode: data.verifyToken,
-      _destroy: false,
+    const existing = await this.delegate.findFirst({
+      where: { id, verifyToken: token },
     });
+
+    if (!existing) {
+      return null;
+    }
+
+    const user = await this.delegate.update({
+      where: { id },
+      data: { isActive: true, verifyToken: null },
+    });
+
     return this.toEntity(user);
   }
 
-  async update(id: string, data: UpdateUserData): Promise<UserEntity | null> {
-    const user = await this.userModel
-      .findOneAndUpdate(
-        { _id: id, isActive: true },
-        { $set: omitUndefined(data) },
-        { new: true, runValidators: true },
-      )
-      .exec();
+  async createUser(data: CreateUserData): Promise<UserEntity> {
+    const nameFromEmail = data.email.split('@')[0];
+    const displayName = data.name || nameFromEmail;
 
-    return user ? this.toEntity(user) : null;
+    const user = await this.delegate.create({
+      data: {
+        email: data.email,
+        name: data.name,
+        username: nameFromEmail,
+        displayName,
+        avatar: null,
+        userCode: data.verifyToken,
+        password: data.password,
+        phone: data.phone ?? null,
+        role: data.role,
+        verifyToken: data.verifyToken,
+        isActive: false,
+      },
+    });
+
+    return this.toEntity(user);
+  }
+
+  async updateUser(
+    id: string,
+    data: UpdateUserData,
+  ): Promise<UserEntity | null> {
+    const existing = await this.delegate.findFirst({
+      where: { id, ...ACTIVE_FILTER },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    const cleanData = omitUndefined(data);
+
+    const user = await this.delegate.update({
+      where: { id },
+      data: cleanData,
+    });
+
+    return this.toEntity(user);
   }
 
   async softDelete(id: string): Promise<UserEntity | null> {
-    const user = await this.userModel
-      .findOneAndUpdate(
-        { _id: id, isActive: true },
-        {
-          $set: {
-            isActive: false,
-          },
-        },
-        { new: true },
-      )
-      .exec();
+    const existing = await this.delegate.findFirst({
+      where: { id, ...ACTIVE_FILTER },
+    });
 
-    return user ? this.toEntity(user) : null;
+    if (!existing) {
+      return null;
+    }
+
+    const user = await this.delegate.update({
+      where: { id },
+      data: { isActive: false, deletedAt: new Date() },
+    });
+
+    return this.toEntity(user);
   }
 
-  private toEntity(user: UserMongoDocument): UserEntity {
-    const id = user._id.toString();
-    const emailName = user.email.split('@')[0];
-    const displayName =
-      user.displayName ?? user.name ?? user.username ?? emailName;
-    const username = user.username ?? emailName;
-
+  private toEntity(
+    user: Prisma.UserGetPayload<object>,
+  ): UserEntity {
     return {
-      id,
-      _id: id,
+      id: user.id,
       email: user.email,
-      name: user.name ?? displayName,
-      username,
-      displayName,
-      avatar: user.avatar ?? null,
-      userCode: user.userCode ?? null,
+      name: user.name,
+      username: user.username,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      userCode: user.userCode,
       password: user.password,
-      phone: user.phone ?? null,
-      role: user.role ?? Role.USER,
+      phone: user.phone,
+      role: user.role as Role,
       verifyToken: user.verifyToken,
       isActive: user.isActive,
       createdAt: user.createdAt,
-      updatedAt: user.updatedAt ?? null,
+      updatedAt: user.updatedAt,
+      deletedAt: user.deletedAt,
     };
   }
 }
