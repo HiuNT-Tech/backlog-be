@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 const SALT_ROUNDS = 10;
 
@@ -15,5 +15,5 @@ export const comparePassword = (
 };
 
 export const generateRandomToken = (): string => {
-  return uuidv4();
+  return randomUUID();
 };

@@ -1,10 +1,8 @@
 import { Role } from '@common/enums/role.enum';
 
 export type UserResponseSource = {
-  id: string;
+  id: number;
   email: string;
-  name: string;
-  username: string;
   displayName: string;
   avatar: string | null;
   userCode: string | null;
@@ -13,14 +11,11 @@ export type UserResponseSource = {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
-  verifyToken: string | null;
 };
 
 export class UserResponseDto {
-  id: string;
+  id: number;
   email: string;
-  name: string;
-  username: string;
   displayName: string;
   avatar: string | null;
   userCode: string | null;
@@ -29,13 +24,10 @@ export class UserResponseDto {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  verifyToken: string | null;
 
   constructor(user: UserResponseSource) {
     this.id = user.id;
     this.email = user.email;
-    this.name = user.name;
-    this.username = user.username;
     this.displayName = user.displayName;
     this.avatar = user.avatar;
     this.userCode = user.userCode;
@@ -44,6 +36,5 @@ export class UserResponseDto {
     this.isActive = user.isActive;
     this.createdAt = user.createdAt.toISOString();
     this.updatedAt = user.updatedAt.toISOString();
-    this.verifyToken = user.verifyToken;
   }
 }

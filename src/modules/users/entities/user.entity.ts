@@ -1,10 +1,8 @@
 import { Role } from '@common/enums/role.enum';
 
 export class UserEntity {
-  id: string;
+  id: number;
   email: string;
-  name: string;
-  username: string;
   displayName: string;
   avatar: string | null;
   userCode: string | null;

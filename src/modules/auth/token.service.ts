@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
+import { createHash } from 'node:crypto';
 import { JwtPayload } from '@/types/jwt-payload.type';
 
 type TokenPayload = Pick<JwtPayload, 'userId' | 'email' | 'role'>;
@@ -24,6 +25,20 @@ export class TokenService {
     return this.jwtService.verifyAsync<JwtPayload>(token, {
       secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
     });
+  }
+
+  hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  getTokenExpiresAt(token: string): Date {
+    const decoded = this.jwtService.decode<{ exp?: number }>(token);
+
+    if (!decoded?.exp) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    return new Date(decoded.exp * 1000);
   }
 
   private getAccessTokenOptions(): JwtSignOptions {

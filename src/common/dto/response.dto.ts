@@ -11,6 +11,7 @@ type ApiErrorResponseOptions = {
   message: ApiErrorMessage;
   requestId: string;
   timestamp?: string;
+  errorCode?: string;
 };
 
 export class ApiResponseDto {
@@ -70,6 +71,7 @@ export class ApiErrorResponseDto extends ApiResponseDto {
   path: string;
   method: string;
   message: ApiErrorMessage;
+  errorCode?: string;
 
   constructor(options: ApiErrorResponseOptions) {
     super({
@@ -80,6 +82,7 @@ export class ApiErrorResponseDto extends ApiResponseDto {
     this.path = options.path;
     this.method = options.method;
     this.message = options.message;
+    this.errorCode = options.errorCode;
   }
 
   override toJSON(): {
@@ -88,14 +91,28 @@ export class ApiErrorResponseDto extends ApiResponseDto {
     path: string;
     method: string;
     message: ApiErrorMessage;
+    errorCode?: string;
   } {
-    return {
+    const response: {
+      statusCode: number;
+      requestId: string;
+      path: string;
+      method: string;
+      message: ApiErrorMessage;
+      errorCode?: string;
+    } = {
       statusCode: this.statusCode,
       requestId: this.requestId,
       path: this.path,
       method: this.method,
       message: this.message,
     };
+
+    if (this.errorCode) {
+      response.errorCode = this.errorCode;
+    }
+
+    return response;
   }
 }
 
