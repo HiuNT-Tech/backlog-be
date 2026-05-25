@@ -8,9 +8,9 @@ Project BE mới là `/home/hiunt/Documents/Backlog/be_02`. Tài liệu này ch�
 
 Nguyên tắc:
 
-- **User/Auth/User Profile đã chuyển sang PostgreSQL.** Bảng `users` nằm trong PostgreSQL với UUID primary key.
+- **User/Auth/User Profile đã chuyển sang PostgreSQL.** Bảng `users` nằm trong PostgreSQL với integer autoincrement primary key.
 - Dữ liệu nghiệp vụ chính nằm trong PostgreSQL.
-- Các bảng PostgreSQL có liên quan user dùng `user_id uuid` với FK trực tiếp tới `users(id)`.
+- Các bảng PostgreSQL có liên quan user dùng `user_id integer` với FK trực tiếp tới `users(id)`.
 - Các `_id` MongoDB của dữ liệu nghiệp vụ nên được map sang UUID mới khi migrate; giữ thêm `legacy_mongo_id` để đối soát trong giai đoạn chuyển đổi.
 - Nếu có dữ liệu user MongoDB cũ, dùng `users.legacy_mongo_id` để map khi migrate.
 
@@ -34,13 +34,13 @@ Không tìm thấy `populate()` hay Mongoose `ref`; quan hệ đang được x�
 
 | Quan hệ | Cách hiện tại trong MongoDB | Thiết kế PostgreSQL đề xuất |
 | --- | --- | --- |
-| `boards.members.userId` -> `users._id` | `members` là array object trong `boards`; `$lookup` sang `users` trong `getUsersBoard` | Bảng `board_members` với `user_id uuid` FK → `users(id)` |
+| `boards.members.userId` -> `users._id` | `members` là array object trong `boards`; `$lookup` sang `users` trong `getUsersBoard` | Bảng `board_members` với `user_id integer` FK → `users(id)` |
 | `boards.columnOrderIds[]` -> `columns._id` | Array ObjectId trong `boards` | Cột `position` trong `columns`; có thể giữ bảng/order riêng nếu cần audit |
 | `columns.boardId` -> `boards._id` | ObjectId | FK `columns.board_id` -> `boards.id` |
 | `columns.cardOrderIds[]` -> `cards._id` | Array ObjectId trong `columns` | Cột `position` trong `cards` theo từng column |
 | `cards.boardId` -> `boards._id` | ObjectId | FK `cards.board_id` -> `boards.id` |
 | `cards.columnId` -> `columns._id` | ObjectId | FK `cards.column_id` -> `columns.id` |
-| `cards.assigneeId` -> `users._id` | ObjectId, service lookup qua `userModel.getManyByIds` | `cards.assignee_user_id uuid` FK → `users(id)` |
+| `cards.assigneeId` -> `users._id` | ObjectId, service lookup qua `userModel.getManyByIds` | `cards.assignee_user_id integer` FK → `users(id)` |
 | `cards.issueTypeId` -> `issue_types._id` | ObjectId + `$lookup` | FK `cards.issue_type_id` -> `issue_types.id` |
 | `cards.versionId` -> `versions._id` | ObjectId | FK `cards.version_id` -> `versions.id` |
 | Lịch sử move/update card | Chưa có collection riêng trong source hiện tại | Thêm `card_activity_logs`; `cards` chỉ giữ `column_id` và `position` hiện tại |
@@ -50,7 +50,7 @@ Không tìm thấy `populate()` hay Mongoose `ref`; quan hệ đang được x�
 
 Điểm đã xác nhận / cần lưu ý:
 
-- `cards.registeredBy` có dùng trong dữ liệu thật, nên map sang `cards.registered_by_user_id uuid` FK → `users(id)`.
+- `cards.registeredBy` có dùng trong dữ liệu thật, nên map sang `cards.registered_by_user_id integer` FK → `users(id)`.
 - `boards.members.role` trong dữ liệu thật lưu dạng số. Khi migrate map `1 -> admin`, `2 -> pm`, `3 -> member`, `4 -> guest`.
 - BE mới dùng soft delete cho dữ liệu nghiệp vụ. PostgreSQL dùng `deleted_at`; không hard delete mặc định.
 - `issue_types.name` cần unique theo board.
@@ -58,12 +58,13 @@ Không tìm thấy `populate()` hay Mongoose `ref`; quan hệ đang được x�
 - `versions.startDate/endDate` dùng PostgreSQL type `date`, API dùng ISO 8601 date-only `YYYY-MM-DD`.
 - Khi migrate cần kiểm tra format dữ liệu cũ trước khi parse.
 - Cần audit lịch sử move card/column. Thêm bảng `card_activity_logs`; bảng `cards` vẫn chỉ lưu `column_id` và `position` hiện tại.
+- `verifyToken` chỉ là dữ liệu nội bộ để verify email, không được export trong response DTO hoặc legacy FE response.
 
 ## 4. Tất cả collection chuyển PostgreSQL
 
 | Collection | Chuyển PostgreSQL | Lý do |
 | --- | --- | --- |
-| `users` | ĐÃ CHUYỂN | Source of truth cho user. UUID PK. FK trực tiếp từ boards, cards, activity_logs. Không cần hybrid lookup MongoDB nữa. |
+| `users` | ĐÃ CHUYỂN | Source of truth cho user. Integer autoincrement PK. FK trực tiếp từ boards, cards, activity_logs. Không cần hybrid lookup MongoDB nữa. |
 | `boards` | Có | Là aggregate root nghiệp vụ. Có quan hệ rõ với columns, cards, issue types, versions, members. PostgreSQL giúp enforce uniqueness, query board/member tốt hơn. |
 | `columns` | Có | Phụ thuộc board, có thứ tự và trạng thái. Phù hợp table quan hệ với FK `board_id`. |
 | `cards` | Có | Dữ liệu nghiệp vụ chính, nhiều filter theo board/status/assignee/priority/issue type/version/date. PostgreSQL phù hợp index và join. |
@@ -74,17 +75,17 @@ Collection giữ MongoDB (tạm thời):
 
 | Collection | Giữ MongoDB | Lý do |
 | --- | --- | --- |
-| `counters` | Có, nếu vẫn phục vụ legacy logic | Hiện `userCode` đang dùng UUID từ `verifyToken`. Counter có thể bỏ khi không cần sequence number nữa. |
+| `counters` | Có, nếu vẫn phục vụ legacy logic | BE mới không còn copy `verifyToken` sang `userCode`. Counter có thể bỏ nếu không cần sequence number hoặc mã user legacy. |
 
 ## 5. Mapping MongoDB collection -> PostgreSQL table
 
 | MongoDB | PostgreSQL | Ghi chú mapping |
 | --- | --- | --- |
-| `users` | `users` | `_id` -> `legacy_mongo_id`; `id` UUID mới; dùng FK trực tiếp cho tất cả bảng nghiệp vụ. |
+| `users` | `users` | `_id` -> `legacy_mongo_id`; `id` integer tự tăng; dùng FK trực tiếp cho tất cả bảng nghiệp vụ; `verify_token` chỉ dùng nội bộ cho email verification, không trả ra API response. |
 | `boards` | `boards` | `_id` -> `id uuid`; giữ `legacy_mongo_id`; `members` tách sang `board_members`; `columnOrderIds` thay bằng `columns.position`. |
-| `boards.members[]` | `board_members` | `userId` -> `user_id uuid` FK → `users(id)`; `role` -> enum `board_member_role`. |
+| `boards.members[]` | `board_members` | `userId` -> `user_id integer` FK → `users(id)`; `role` -> enum `board_member_role`. |
 | `columns` | `columns` | `boardId` -> `board_id`; `cardOrderIds` thay bằng `cards.position`; `statusColor` -> `status_color_id`. |
-| `cards` | `cards` | `boardId`, `columnId`, `issueTypeId`, `versionId` thành FK; `assigneeId` -> `assignee_user_id uuid` FK; `registeredBy` -> `registered_by_user_id uuid` FK. |
+| `cards` | `cards` | `boardId`, `columnId`, `issueTypeId`, `versionId` thành FK; `assigneeId` -> `assignee_user_id integer` FK; `registeredBy` -> `registered_by_user_id integer` FK. |
 | Không có collection cũ | `card_activity_logs` | Bảng mới để audit lịch sử di chuyển card, đổi column, đổi position và các hành động quan trọng khác. |
 | `issue_types` | `issue_types` | `boardId` -> `board_id`; `statusColor` -> `status_color_id`. |
 | `versions` | `versions` | `boardId` -> `board_id`; `startDate`, `endDate` nên dùng `date`. |
@@ -106,8 +107,8 @@ Có thể dùng enum thay master table cho priority/status color nếu domain r�
 
 ## 7. Quy tắc lưu user_id trong PostgreSQL
 
-- Tất cả user reference trong PostgreSQL dùng `user_id uuid` với FK → `users(id)`.
-- **Bảng `users` nằm trong PostgreSQL** với UUID primary key.
+- Tất cả user reference trong PostgreSQL dùng `user_id integer` với FK → `users(id)`.
+- **Bảng `users` nằm trong PostgreSQL** với integer autoincrement primary key.
 - Có foreign key bảo vệ tính toàn vẹn dữ liệu.
 - Các field user hiện tại:
   - `boards.members.userId` -> `board_members.user_id` FK.
@@ -175,9 +176,9 @@ Khuyến nghị chung:
 
 ## 12. Những điểm đã chốt
 
-- ĐÃ CHỐT chuyển `users` sang PostgreSQL với UUID PK. Bỏ thiết kế hybrid cho user.
-- ĐÃ CHỐT tất cả user reference dùng `user_id uuid` FK → `users(id)`.
-- ĐÃ CHỐT `cards.registeredBy` có tồn tại, map sang `cards.registered_by_user_id uuid` FK.
+- ĐÃ CHỐT chuyển `users` sang PostgreSQL với integer autoincrement PK. Bỏ thiết kế hybrid cho user.
+- ĐÃ CHỐT tất cả user reference dùng `user_id integer` FK → `users(id)`.
+- ĐÃ CHỐT `cards.registeredBy` có tồn tại, map sang `cards.registered_by_user_id integer` FK.
 - ĐÃ CHỐT `boards.members.role` lưu dạng số, migrate theo mapping `1 admin`, `2 pm`, `3 member`, `4 guest`.
 - ĐÃ CHỐT dùng soft delete bằng `deleted_at` cho dữ liệu nghiệp vụ và user.
 - ĐÃ CHỐT `issue_types.name` unique theo board và `boards.slug` unique.

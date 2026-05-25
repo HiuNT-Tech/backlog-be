@@ -12,7 +12,12 @@ import { UserEntity } from './entities/user.entity';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UsersRepository } from './repositories/users.repository';
 
-const USER_SORT_FIELDS = ['createdAt', 'updatedAt', 'email', 'name'] as const;
+const USER_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'email',
+  'displayName',
+] as const;
 type UserSortField = (typeof USER_SORT_FIELDS)[number];
 
 @Injectable()
@@ -20,27 +25,22 @@ export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
-    const email = normalizeEmail(dto.email);
-    const existingUser = await this.usersRepository.findByEmail(email);
-
-    if (existingUser) {
-      throw new BusinessException(
-        ErrorCode.USER_EMAIL_EXISTS,
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const password = await hashPassword(dto.password);
-    const user = await this.usersRepository.createUser({
-      email,
-      name: dto.name,
-      password,
-      phone: dto.phone,
-      role: dto.role ?? Role.USER,
-      verifyToken: generateRandomToken(),
-    });
+    const user = await this.createForRegistration(dto);
 
     return this.toResponse(user);
+  }
+
+  async createForRegistration(dto: CreateUserDto): Promise<UserEntity> {
+    const password = await hashPassword(dto.password);
+
+    return await this.usersRepository.createUser({
+      email: dto.email,
+      displayName: dto.displayName,
+      password,
+      phone: dto.phone,
+      role: Role.USER,
+      verifyToken: generateRandomToken(),
+    });
   }
 
   async findAll(
@@ -67,20 +67,20 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string): Promise<UserResponseDto> {
+  async findOne(id: number): Promise<UserResponseDto> {
     const user = await this.findExistingById(id);
     return this.toResponse(user);
   }
 
-  findByEmailWithPassword(email: string): Promise<UserEntity | null> {
+  findByEmail(email: string): Promise<UserEntity | null> {
     return this.usersRepository.findByEmail(normalizeEmail(email));
   }
 
-  findByIdForAuth(id: string): Promise<UserEntity | null> {
+  findByIdForAuth(id: number): Promise<UserEntity | null> {
     return this.usersRepository.findById(id);
   }
 
-  async verifyAccount(id: string, token: string): Promise<UserResponseDto> {
+  async verifyAccount(id: number, token: string): Promise<UserResponseDto> {
     const user = await this.usersRepository.verifyAccount(id, token);
 
     if (!user) {
@@ -90,13 +90,12 @@ export class UsersService {
     return this.toResponse(user);
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {
+  async update(id: number, dto: UpdateUserDto): Promise<UserResponseDto> {
     await this.findExistingById(id);
 
     const user = await this.usersRepository.updateUser(id, {
-      name: dto.name,
+      displayName: dto.displayName,
       phone: dto.phone,
-      role: dto.role,
       isActive: dto.isActive,
     });
 
@@ -107,7 +106,7 @@ export class UsersService {
     return this.toResponse(user);
   }
 
-  async remove(id: string): Promise<UserResponseDto> {
+  async remove(id: number): Promise<UserResponseDto> {
     await this.findExistingById(id);
     const user = await this.usersRepository.softDelete(id);
 
@@ -118,7 +117,7 @@ export class UsersService {
     return this.toResponse(user);
   }
 
-  private async findExistingById(id: string): Promise<UserEntity> {
+  private async findExistingById(id: number): Promise<UserEntity> {
     const user = await this.usersRepository.findActiveById(id);
 
     if (!user) {

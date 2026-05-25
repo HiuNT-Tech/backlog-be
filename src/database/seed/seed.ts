@@ -11,29 +11,28 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString });
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
+  try {
+    const email = 'admin@example.com';
+    const password = await hashPassword('Admin@123456');
 
-  const email = 'admin@example.com';
-  const password = await hashPassword('Admin@123456');
-
-  await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: {
-      email,
-      name: 'Admin',
-      username: 'admin',
-      displayName: 'Admin',
-      password,
-      role: Role.ADMIN,
-      isActive: true,
-    },
-  });
-
-  await prisma.$disconnect();
-  await pool.end();
+    await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        displayName: 'Admin',
+        password,
+        role: Role.ADMIN,
+        isActive: true,
+      },
+    });
+  } finally {
+    await prisma.$disconnect();
+    await pool.end();
+  }
 }
 
-main().catch(async (error: unknown) => {
+main().catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });

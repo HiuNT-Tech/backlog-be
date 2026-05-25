@@ -8,9 +8,11 @@ import {
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import { BusinessException } from '@common/exceptions/business.exception';
 import { FileLogger } from '@common/logger';
 
 type ExceptionResponse = {
+  errorCode?: string;
   message?: string | string[];
   error?: string;
 };
@@ -27,6 +29,7 @@ export class HttpExceptionFilter implements ExceptionFilter<unknown> {
     const requestId = this.getRequestId(request);
     const statusCode = this.getStatusCode(exception);
     const message = this.getMessage(exception);
+    const errorCode = this.getErrorCode(exception);
 
     this.logException({
       exception,
@@ -45,6 +48,7 @@ export class HttpExceptionFilter implements ExceptionFilter<unknown> {
         method: request.method,
         message,
         timestamp,
+        errorCode,
       }),
     );
   }
@@ -80,6 +84,15 @@ export class HttpExceptionFilter implements ExceptionFilter<unknown> {
 
     const body = exceptionResponse as ExceptionResponse;
     return body.message ?? exception.message;
+  }
+
+  private getErrorCode(exception: unknown): string | undefined {
+    if (exception instanceof BusinessException) {
+      const response = exception.getResponse() as ExceptionResponse;
+      return response.errorCode;
+    }
+
+    return undefined;
   }
 
   private logException(input: {

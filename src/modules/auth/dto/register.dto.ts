@@ -14,7 +14,8 @@ export class RegisterDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? normalizeString(value) : value,
   )
-  name: string;
+  @IsOptional()
+  displayName?: string;
 
   @IsString()
   @MinLength(8)

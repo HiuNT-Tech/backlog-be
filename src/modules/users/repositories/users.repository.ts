@@ -8,13 +8,16 @@ import { UserEntity } from '../entities/user.entity';
 type FindManyUsersParams = {
   skip: number;
   take: number;
-  sortBy: keyof Pick<UserEntity, 'createdAt' | 'updatedAt' | 'email' | 'name'>;
+  sortBy: keyof Pick<
+    UserEntity,
+    'createdAt' | 'updatedAt' | 'email' | 'displayName'
+  >;
   sortOrder: 'asc' | 'desc';
 };
 
 type CreateUserData = {
   email: string;
-  name: string;
+  displayName?: string;
   password: string;
   phone?: string;
   role: Role;
@@ -22,7 +25,7 @@ type CreateUserData = {
 };
 
 type UpdateUserData = Partial<
-  Pick<UserEntity, 'name' | 'phone' | 'role' | 'isActive'>
+  Pick<UserEntity, 'displayName' | 'phone' | 'isActive'>
 >;
 
 const ACTIVE_FILTER: Prisma.UserWhereInput = {
@@ -60,12 +63,12 @@ export class UsersRepository extends BasePrismaRepository<
     return this.delegate.count({ where: ACTIVE_FILTER });
   }
 
-  async findById(id: string): Promise<UserEntity | null> {
+  async findById(id: number): Promise<UserEntity | null> {
     const user = await this.delegate.findUnique({ where: { id } });
     return user ? this.toEntity(user) : null;
   }
 
-  async findActiveById(id: string): Promise<UserEntity | null> {
+  async findActiveById(id: number): Promise<UserEntity | null> {
     const user = await this.delegate.findFirst({
       where: { id, ...ACTIVE_FILTER },
     });
@@ -77,7 +80,7 @@ export class UsersRepository extends BasePrismaRepository<
     return user ? this.toEntity(user) : null;
   }
 
-  async verifyAccount(id: string, token: string): Promise<UserEntity | null> {
+  async verifyAccount(id: number, token: string): Promise<UserEntity | null> {
     const existing = await this.delegate.findFirst({
       where: { id, verifyToken: token },
     });
@@ -95,17 +98,15 @@ export class UsersRepository extends BasePrismaRepository<
   }
 
   async createUser(data: CreateUserData): Promise<UserEntity> {
-    const nameFromEmail = data.email.split('@')[0];
-    const displayName = data.name || nameFromEmail;
+    const defaultDisplayName = data.email.split('@')[0];
+    const displayName = data.displayName?.trim() || defaultDisplayName;
 
     const user = await this.delegate.create({
       data: {
         email: data.email,
-        name: data.name,
-        username: nameFromEmail,
         displayName,
         avatar: null,
-        userCode: data.verifyToken,
+        userCode: null,
         password: data.password,
         phone: data.phone ?? null,
         role: data.role,
@@ -118,7 +119,7 @@ export class UsersRepository extends BasePrismaRepository<
   }
 
   async updateUser(
-    id: string,
+    id: number,
     data: UpdateUserData,
   ): Promise<UserEntity | null> {
     const existing = await this.delegate.findFirst({
@@ -139,7 +140,7 @@ export class UsersRepository extends BasePrismaRepository<
     return this.toEntity(user);
   }
 
-  async softDelete(id: string): Promise<UserEntity | null> {
+  async softDelete(id: number): Promise<UserEntity | null> {
     const existing = await this.delegate.findFirst({
       where: { id, ...ACTIVE_FILTER },
     });
@@ -156,14 +157,10 @@ export class UsersRepository extends BasePrismaRepository<
     return this.toEntity(user);
   }
 
-  private toEntity(
-    user: Prisma.UserGetPayload<object>,
-  ): UserEntity {
+  private toEntity(user: Prisma.UserGetPayload<object>): UserEntity {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
-      username: user.username,
       displayName: user.displayName,
       avatar: user.avatar,
       userCode: user.userCode,

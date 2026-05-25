@@ -1,0 +1,2 @@
+-- No-op after resetting the development database.
+-- The users.id column is now created as SERIAL in 20260521000000_add_users_table.

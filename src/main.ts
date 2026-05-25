@@ -17,6 +17,7 @@ async function bootstrap() {
   });
   const logger = app.get(FileLogger);
   app.useLogger(logger);
+  app.enableShutdownHooks();
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port', 3000);
