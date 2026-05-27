@@ -1,18 +1,18 @@
 Project backlog_postgresql {
   database_type: "PostgreSQL"
-  Note: "User/Auth/Profile đã chuyển sang PostgreSQL. Tất cả user reference dùng FK integer trực tiếp."
+  Note: "Schema dev dùng PostgreSQL sạch. Tất cả primary key và foreign key domain dùng integer autoincrement. Dự án không chuyển dữ liệu cũ."
 }
 
 Enum board_type {
-  public
-  private
+  PUBLIC
+  PRIVATE
 }
 
 Enum board_member_role {
-  admin
-  pm
-  member
-  guest
+  ADMIN
+  PM
+  MEMBER
+  GUEST
 }
 
 Enum role {
@@ -21,17 +21,17 @@ Enum role {
 }
 
 Enum card_activity_action {
-  created
-  moved
-  column_changed
-  position_changed
-  assignee_changed
-  priority_changed
-  issue_type_changed
-  version_changed
-  updated
-  deleted
-  restored
+  CREATED
+  MOVED
+  COLUMN_CHANGED
+  POSITION_CHANGED
+  ASSIGNEE_CHANGED
+  PRIORITY_CHANGED
+  ISSUE_TYPE_CHANGED
+  VERSION_CHANGED
+  UPDATED
+  DELETED
+  RESTORED
 }
 
 Table users {
@@ -43,57 +43,51 @@ Table users {
   password text [not null]
   phone varchar(20)
   role role [not null, default: "USER"]
-  verify_token text [note: "Internal email verification token; never expose in response DTO or legacy FE response"]
+  verify_token text [note: "Token xác thực email nội bộ, không trả ra response DTO"]
   is_active boolean [not null, default: false]
-  legacy_mongo_id varchar(24) [unique, note: "ObjectId cũ từ MongoDB users._id để đối soát migration"]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
   deleted_at timestamptz
 }
 
-Table status_colors {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_color_value smallint [not null, unique, note: "Map từ constants StatusColor hiện tại: 1..10"]
-  code varchar(32) [not null, unique, note: "red, orange, pink, indigo, blue, teal, green, yellow, bright_red, black"]
-  label varchar(64) [not null]
-  sort_order smallint [not null]
+Table refresh_token_sessions {
+  id integer [pk, increment]
+  user_id integer [not null]
+  token_hash text [not null, unique]
+  replaced_by_token_hash text
+  expires_at timestamptz [not null]
+  revoked_at timestamptz
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
-}
 
-Table priorities {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_priority_value smallint [not null, unique, note: "Map từ constants PRIORITY hiện tại: 1 low, 2 normal, 3 high"]
-  code varchar(32) [not null, unique]
-  label varchar(64) [not null]
-  sort_order smallint [not null]
-  created_at timestamptz [not null, default: `now()`]
-  updated_at timestamptz [not null, default: `now()`]
+  Indexes {
+    user_id [name: "idx_refresh_token_sessions_user_id"]
+    expires_at [name: "idx_refresh_token_sessions_expires_at"]
+  }
 }
 
 Table boards {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_mongo_id varchar(24) [unique, note: "ObjectId cũ từ MongoDB boards._id để đối soát migration"]
+  id integer [pk, increment]
   title varchar(50) [not null]
-  slug varchar(120) [not null]
+  board_code varchar(16) [not null, note: "Project key dùng cho ticket code, ví dụ PIPC"]
   description varchar(255)
   type board_type [not null]
+  next_card_number integer [not null, default: 1, note: "Số ticket tiếp theo, tăng trong transaction khi tạo card"]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
-  deleted_at timestamptz [note: "Thay thế _destroy=true nếu chuẩn hóa soft delete"]
+  deleted_at timestamptz [note: "Soft delete"]
 
   Indexes {
-    slug [unique, name: "uq_boards_slug"]
+    board_code [unique, name: "uq_boards_board_code"]
     deleted_at [name: "idx_boards_deleted_at"]
-    legacy_mongo_id [unique, name: "uq_boards_legacy_mongo_id"]
   }
 }
 
 Table board_members {
-  id uuid [pk, default: `gen_random_uuid()`]
-  board_id uuid [not null]
-  user_id integer [not null, note: "FK tới users.id"]
-  role board_member_role [not null, default: "member"]
+  id integer [pk, increment]
+  board_id integer [not null]
+  user_id integer [not null]
+  role board_member_role [not null, default: "MEMBER"]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
   deleted_at timestamptz
@@ -106,29 +100,26 @@ Table board_members {
 }
 
 Table columns {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_mongo_id varchar(24) [unique, note: "ObjectId cũ từ MongoDB columns._id"]
-  board_id uuid [not null]
+  id integer [pk, increment]
+  board_id integer [not null]
   title varchar(50) [not null]
-  status_color_id uuid [not null]
-  position integer [not null, default: 0, note: "Thay thế boards.columnOrderIds theo từng board"]
+  status_color smallint [not null, default: 1, note: "FE statusColor 1..10"]
+  position integer [not null, default: 0, note: "Thay cho board.columnOrderIds trong DB"]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
   deleted_at timestamptz
 
   Indexes {
     (board_id, position) [name: "idx_columns_board_position"]
-    (board_id, title) [name: "idx_columns_board_title"]
-    legacy_mongo_id [unique, name: "uq_columns_legacy_mongo_id"]
+    board_id [name: "idx_columns_board_id"]
   }
 }
 
 Table issue_types {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_mongo_id varchar(24) [unique, note: "ObjectId cũ từ MongoDB issue_types._id"]
-  board_id uuid [not null]
+  id integer [pk, increment]
+  board_id integer [not null]
   name varchar(50) [not null]
-  status_color_id uuid [not null]
+  status_color smallint [not null, default: 1, note: "FE statusColor 1..10"]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
   deleted_at timestamptz
@@ -136,14 +127,12 @@ Table issue_types {
   Indexes {
     (board_id, name) [unique, name: "uq_issue_types_board_name"]
     board_id [name: "idx_issue_types_board_id"]
-    legacy_mongo_id [unique, name: "uq_issue_types_legacy_mongo_id"]
   }
 }
 
 Table versions {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_mongo_id varchar(24) [unique, note: "ObjectId cũ từ MongoDB versions._id"]
-  board_id uuid [not null]
+  id integer [pk, increment]
+  board_id integer [not null]
   name varchar(50) [not null]
   start_date date
   end_date date
@@ -153,55 +142,58 @@ Table versions {
   deleted_at timestamptz
 
   Indexes {
-    (board_id, name) [name: "idx_versions_board_name"]
+    board_id [name: "idx_versions_board_id"]
     (board_id, start_date, end_date) [name: "idx_versions_board_dates"]
-    legacy_mongo_id [unique, name: "uq_versions_legacy_mongo_id"]
   }
 }
 
 Table cards {
-  id uuid [pk, default: `gen_random_uuid()`]
-  legacy_mongo_id varchar(24) [unique, note: "ObjectId cũ từ MongoDB cards._id"]
-  board_id uuid [not null]
-  column_id uuid [not null]
+  id integer [pk, increment]
+  board_id integer [not null]
+  column_id integer [not null]
+  card_number integer [not null, note: "Sequence number theo board"]
+  card_code varchar(40) [not null, note: "Ticket key ổn định, ví dụ PIPC-4119"]
   title varchar(50) [not null]
   description text
-  priority_id uuid
-  assignee_user_id integer [note: "FK tới users.id"]
-  registered_by_user_id integer [note: "FK tới users.id"]
-  issue_type_id uuid
-  version_id uuid
+  priority_id integer [note: "FE priorityId: 1 low, 2 normal, 3 high"]
+  assignee_user_id integer
+  registered_by_user_id integer
+  created_by_user_id integer
+  issue_type_id integer
+  version_id integer
   start_date date
   due_date date
-  estimated_hours numeric(8,2) [note: "MongoDB đang lưu string; cần chuẩn hóa dữ liệu khi migrate"]
-  actual_hours numeric(8,2) [note: "MongoDB đang lưu string; cần chuẩn hóa dữ liệu khi migrate"]
-  position integer [not null, default: 0, note: "Thay thế columns.cardOrderIds theo từng column"]
+  estimated_hours varchar(32) [note: "Giữ dạng string để tương thích FE phase đầu"]
+  actual_hours varchar(32) [note: "Giữ dạng string để tương thích FE phase đầu"]
+  position integer [not null, default: 0, note: "Thay cho column.cardOrderIds trong DB"]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
   deleted_at timestamptz
 
   Indexes {
+    card_code [unique, name: "uq_cards_card_code"]
+    (board_id, card_number) [unique, name: "uq_cards_board_card_number"]
     (board_id, deleted_at) [name: "idx_cards_board_deleted_at"]
     (column_id, position) [name: "idx_cards_column_position"]
     assignee_user_id [name: "idx_cards_assignee_user_id"]
     registered_by_user_id [name: "idx_cards_registered_by_user_id"]
+    created_by_user_id [name: "idx_cards_created_by_user_id"]
     issue_type_id [name: "idx_cards_issue_type_id"]
     version_id [name: "idx_cards_version_id"]
     priority_id [name: "idx_cards_priority_id"]
     start_date [name: "idx_cards_start_date"]
     due_date [name: "idx_cards_due_date"]
-    legacy_mongo_id [unique, name: "uq_cards_legacy_mongo_id"]
   }
 }
 
 Table card_activity_logs {
-  id uuid [pk, default: `gen_random_uuid()`]
-  board_id uuid [not null]
-  card_id uuid [not null]
-  actor_user_id integer [note: "FK tới users.id"]
+  id integer [pk, increment]
+  board_id integer [not null]
+  card_id integer [not null]
+  actor_user_id integer
   action card_activity_action [not null]
-  from_column_id uuid [note: "Column trước khi move/change; null nếu không áp dụng"]
-  to_column_id uuid [note: "Column sau khi move/change; null nếu không áp dụng"]
+  from_column_id integer [note: "Column trước khi move/change; null nếu không áp dụng"]
+  to_column_id integer [note: "Column sau khi move/change; null nếu không áp dụng"]
   from_position integer [note: "Position trước khi move/change; null nếu không áp dụng"]
   to_position integer [note: "Position sau khi move/change; null nếu không áp dụng"]
   metadata jsonb [note: "Thông tin before/after cho các hành động quan trọng khác"]
@@ -217,20 +209,19 @@ Table card_activity_logs {
 }
 
 // Foreign keys
+Ref: refresh_token_sessions.user_id > users.id [delete: cascade]
 Ref: board_members.board_id > boards.id [delete: cascade]
 Ref: board_members.user_id > users.id
 Ref: columns.board_id > boards.id [delete: cascade]
-Ref: columns.status_color_id > status_colors.id
 Ref: issue_types.board_id > boards.id [delete: cascade]
-Ref: issue_types.status_color_id > status_colors.id
 Ref: versions.board_id > boards.id [delete: cascade]
 Ref: cards.board_id > boards.id [delete: cascade]
-Ref: cards.column_id > columns.id
-Ref: cards.priority_id > priorities.id
+Ref: cards.column_id > columns.id [delete: cascade]
 Ref: cards.assignee_user_id > users.id
 Ref: cards.registered_by_user_id > users.id
-Ref: cards.issue_type_id > issue_types.id
-Ref: cards.version_id > versions.id
+Ref: cards.created_by_user_id > users.id
+Ref: cards.issue_type_id > issue_types.id [delete: set null]
+Ref: cards.version_id > versions.id [delete: set null]
 Ref: card_activity_logs.board_id > boards.id [delete: cascade]
 Ref: card_activity_logs.card_id > cards.id [delete: cascade]
 Ref: card_activity_logs.actor_user_id > users.id

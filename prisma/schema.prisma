@@ -12,29 +12,44 @@ enum Role {
   ADMIN
 }
 
+enum BoardType {
+  PUBLIC
+  PRIVATE
+}
+
+enum BoardMemberRole {
+  ADMIN
+  PM
+  MEMBER
+  GUEST
+}
+
 model User {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique
-  displayName   String    @map("display_name")
-  avatar        String?
-  userCode      String?   @map("user_code")
-  password      String
-  phone         String?
-  role          Role      @default(USER)
-  verifyToken   String?   @map("verify_token")
-  isActive      Boolean   @default(false) @map("is_active")
-  legacyMongoId String?   @unique @map("legacy_mongo_id")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  displayName String    @map("display_name")
+  avatar      String?
+  userCode    String?   @map("user_code")
+  password    String
+  phone       String?
+  role        Role      @default(USER)
+  verifyToken String?   @map("verify_token")
+  isActive    Boolean   @default(false) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   refreshTokenSessions RefreshTokenSession[]
+  boardMemberships     BoardMember[]
+  assignedCards        Card[]                @relation("CardAssignee")
+  registeredCards      Card[]                @relation("CardRegisteredBy")
+  createdCards         Card[]                @relation("CardCreatedBy")
 
   @@map("users")
 }
 
 model RefreshTokenSession {
-  id                  String    @id @default(uuid())
+  id                  Int       @id @default(autoincrement())
   userId              Int       @map("user_id")
   tokenHash           String    @unique @map("token_hash")
   replacedByTokenHash String?   @map("replaced_by_token_hash")
@@ -48,4 +63,142 @@ model RefreshTokenSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_token_sessions")
+}
+
+model Board {
+  id             Int       @id @default(autoincrement())
+  title          String    @db.VarChar(50)
+  boardCode      String    @unique(map: "uq_boards_board_code") @map("board_code") @db.VarChar(16)
+  description    String?   @db.VarChar(255)
+  type           BoardType
+  nextCardNumber Int       @default(1) @map("next_card_number")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  members    BoardMember[]
+  columns    Column[]
+  cards      Card[]
+  issueTypes IssueType[]
+  versions   Version[]
+
+  @@index([deletedAt], map: "idx_boards_deleted_at")
+  @@map("boards")
+}
+
+model BoardMember {
+  id        Int             @id @default(autoincrement())
+  boardId   Int             @map("board_id")
+  userId    Int             @map("user_id")
+  role      BoardMemberRole @default(MEMBER)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  deletedAt DateTime?       @map("deleted_at")
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([boardId, userId], map: "uq_board_members_board_user")
+  @@index([userId], map: "idx_board_members_user_id")
+  @@index([boardId], map: "idx_board_members_board_id")
+  @@map("board_members")
+}
+
+model Column {
+  id          Int       @id @default(autoincrement())
+  boardId     Int       @map("board_id")
+  title       String    @db.VarChar(50)
+  statusColor Int       @default(1) @map("status_color") @db.SmallInt
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@index([boardId, position], map: "idx_columns_board_position")
+  @@index([boardId], map: "idx_columns_board_id")
+  @@map("columns")
+}
+
+model IssueType {
+  id          Int       @id @default(autoincrement())
+  boardId     Int       @map("board_id")
+  name        String    @db.VarChar(50)
+  statusColor Int       @default(1) @map("status_color") @db.SmallInt
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@unique([boardId, name], map: "uq_issue_types_board_name")
+  @@index([boardId], map: "idx_issue_types_board_id")
+  @@map("issue_types")
+}
+
+model Version {
+  id          Int       @id @default(autoincrement())
+  boardId     Int       @map("board_id")
+  name        String    @db.VarChar(50)
+  startDate   DateTime? @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  description String    @default("") @db.VarChar(500)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@index([boardId], map: "idx_versions_board_id")
+  @@index([boardId, startDate, endDate], map: "idx_versions_board_dates")
+  @@map("versions")
+}
+
+model Card {
+  id                 Int       @id @default(autoincrement())
+  boardId            Int       @map("board_id")
+  columnId           Int       @map("column_id")
+  cardNumber         Int       @map("card_number")
+  cardCode           String    @unique(map: "uq_cards_card_code") @map("card_code") @db.VarChar(40)
+  title              String    @db.VarChar(50)
+  description        String?   @db.Text
+  priorityId         Int?      @map("priority_id")
+  assigneeUserId     Int?      @map("assignee_user_id")
+  registeredByUserId Int?      @map("registered_by_user_id")
+  createdByUserId    Int?      @map("created_by_user_id")
+  issueTypeId        Int?      @map("issue_type_id")
+  versionId          Int?      @map("version_id")
+  startDate          DateTime? @map("start_date") @db.Date
+  dueDate            DateTime? @map("due_date") @db.Date
+  estimatedHours     String?   @map("estimated_hours") @db.VarChar(32)
+  actualHours        String?   @map("actual_hours") @db.VarChar(32)
+  position           Int       @default(0)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  board        Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column       Column     @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee     User?      @relation("CardAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  registeredBy User?      @relation("CardRegisteredBy", fields: [registeredByUserId], references: [id], onDelete: SetNull)
+  createdBy    User?      @relation("CardCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  issueType    IssueType? @relation(fields: [issueTypeId], references: [id], onDelete: SetNull)
+  version      Version?   @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@unique([boardId, cardNumber], map: "uq_cards_board_card_number")
+  @@index([boardId, deletedAt], map: "idx_cards_board_deleted_at")
+  @@index([columnId, position], map: "idx_cards_column_position")
+  @@index([assigneeUserId], map: "idx_cards_assignee_user_id")
+  @@index([registeredByUserId], map: "idx_cards_registered_by_user_id")
+  @@index([createdByUserId], map: "idx_cards_created_by_user_id")
+  @@index([issueTypeId], map: "idx_cards_issue_type_id")
+  @@index([versionId], map: "idx_cards_version_id")
+  @@index([priorityId], map: "idx_cards_priority_id")
+  @@index([startDate], map: "idx_cards_start_date")
+  @@index([dueDate], map: "idx_cards_due_date")
+  @@map("cards")
 }

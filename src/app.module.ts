@@ -11,6 +11,8 @@ import {
 import { CommonModule } from '@common/common.module';
 import { DatabaseModule } from '@database/database.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { BoardsModule } from '@modules/boards/boards.module';
+import { ColumnsModule } from '@modules/columns/columns.module';
 import { HealthModule } from '@modules/health/health.module';
 import { UsersModule } from '@modules/users/users.module';
 import { AppController } from './app.controller';
@@ -37,6 +39,8 @@ import { AppController } from './app.controller';
     CommonModule,
     DatabaseModule,
     AuthModule,
+    BoardsModule,
+    ColumnsModule,
     UsersModule,
     HealthModule,
   ],

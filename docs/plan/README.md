@@ -1,41 +1,47 @@
-# Plan migrate BE cu sang be_02
+# Kế hoạch triển khai domain backlog trên be_02
 
-## Muc tieu
+## Mục tiêu
 
-Chuyen cac API/service con lai tu backend cu `/home/hiunt/Documents/Backlog/BE` sang backend NestJS moi `/home/hiunt/Documents/Backlog/be_02`, trong khi giu frontend `/home/hiunt/Documents/Backlog/FE` phai sua it nhat co the.
+Triển khai các API/service domain backlog còn thiếu trên backend NestJS mới `/home/hiunt/Documents/Backlog/be_02` và refactor frontend `/home/hiunt/Documents/Backlog/FE` sang contract sạch, dễ bảo trì.
 
-Trang thai hien tai:
+Backend cũ `/home/hiunt/Documents/Backlog/BE` chỉ dùng làm tài liệu tham chiếu nghiệp vụ. Dự án đang trong giai đoạn phát triển, chưa có dữ liệu thật cần giữ, nên không chuyển dữ liệu MongoDB sang PostgreSQL và không giữ các field legacy chỉ để compatibility.
 
-- `be_02` da co code base NestJS, PostgreSQL, Prisma, auth, users, refresh token session, logging, guard, filter, interceptor.
-- Auth FE hien dang goi `/v1/auth/*`.
-- Domain nghiep vu chua migrate trong `be_02`: boards, columns/statuses, cards/issues, issue-types, versions.
-- FE hien phu thuoc nhieu vao `_id`, path `/v1/...`, cookie auth, HTTP `410` khi access token het han, va response raw khong boc `{ item: ... }`.
+## Trạng thái hiện tại
 
-## Nguyen tac bat buoc
+- `be_02` đã có NestJS, PostgreSQL, Prisma, auth, users, refresh token session, logging, guard, filter.
+- Domain nghiệp vụ chưa triển khai đầy đủ trong `be_02`: boards, columns/statuses, cards/issues, issue-types, versions.
+- FE được refactor sang `id` number, enum string và `position`; không dùng `_id`, `columnOrderIds`, `cardOrderIds`.
 
-1. Khong doi logic FE neu co the xu ly o BE bang compatibility layer.
-2. Giu API path cu cho domain: `/v1/boards`, `/v1/columns`, `/v1/cards`.
-3. Auth giu API FE hien tai: `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/verify-account`, `/v1/auth/logout`, `/v1/auth/refresh_token`.
-4. Response phase dau phai tra raw data giong FE dang dung, khong boc thanh `{ item: ... }`.
-5. API response tra `_id` string cho tat ca entity domain, co the tra them `id` neu can.
-6. DB moi dung relation/FK/transaction, nhung mapper phai giu contract FE cu.
-7. Cac thao tac order/move card/column phai chay trong transaction.
-8. Migrate theo tung phase, moi phase co the build/test duoc.
+## Nguyên tắc bắt buộc
 
-## Danh sach phase
+1. Giữ API path hiện tại cho domain: `/v1/boards`, `/v1/columns`, `/v1/cards`.
+2. Auth giữ API FE hiện tại: `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/verify-account`, `/v1/auth/logout`, `/v1/auth/refresh_token`.
+3. Domain API trả raw data theo contract mới, không bọc `{ item: ... }` trong phase này.
+4. Entity domain chỉ dùng `id: number`; không trả `_id`.
+5. Order lưu và trả bằng `position`; không trả `columnOrderIds` hoặc `cardOrderIds`.
+6. Board type trả enum DB: `PUBLIC | PRIVATE`.
+7. Board member role trả enum DB: `ADMIN | PM | MEMBER | GUEST`.
+8. Board/project có mã truy cập `boardCode`, lưu DB là `board_code`, ví dụ `PIPC`.
+9. Card/issue có mã định danh ổn định `cardCode`, lưu DB là `card_code`, ví dụ `PIPC-4119`.
+10. Không tạo mapper compatibility legacy. Chỉ dùng response DTO/serializer mỏng khi cần chặn field nhạy cảm hoặc format date.
+11. Các thao tác reorder/move card/column và sinh `cardCode` phải chạy trong transaction.
+12. Không viết pipeline chuyển dữ liệu từ MongoDB; nếu cần dữ liệu test thì dùng seed dev.
+13. Triển khai theo từng phase, mỗi phase có thể build/test được.
 
-| Phase | File | Noi dung |
-| --- | --- | --- |
-| 00 | [phase-00-compatibility-baseline.md](./phase-00-compatibility-baseline.md) | Can chinh prefix, port, cookie auth, response raw, `410`, `/v1/status`. |
-| 01 | [phase-01-prisma-domain-schema.md](./phase-01-prisma-domain-schema.md) | Them Prisma schema cho boards, members, columns, cards, issue-types, versions. |
-| 02 | [phase-02-boards-columns.md](./phase-02-boards-columns.md) | Migrate board va column/status endpoints. |
-| 03 | [phase-03-cards-issues.md](./phase-03-cards-issues.md) | Migrate card/issue CRUD, list filters, drag/drop/move card. |
-| 04 | [phase-04-issue-types-versions.md](./phase-04-issue-types-versions.md) | Migrate issue type va version settings. |
-| 05 | [phase-05-data-migration.md](./phase-05-data-migration.md) | Dry-run va migrate data MongoDB sang PostgreSQL. |
-| 06 | [phase-06-cutover-fe-verification.md](./phase-06-cutover-fe-verification.md) | Cutover FE sang BE moi va kiem thu cac man hinh. |
-| 07 | [phase-07-hardening-cleanup.md](./phase-07-hardening-cleanup.md) | Test, permission, cleanup legacy compatibility, tai lieu van hanh. |
+## Danh sách phase
 
-## Endpoint surface can giu
+| Phase | Trạng thái  | File                                                                       | Nội dung                                                                       |
+| ----- | ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 00    | Done        | [phase-00-compatibility-baseline.md](./phase-00-compatibility-baseline.md) | Căn chỉnh prefix, port, cookie auth, response raw, `410`, `/v1/status`.        |
+| 01    | Done        | [phase-01-prisma-domain-schema.md](./phase-01-prisma-domain-schema.md)     | Thêm Prisma schema cho boards, members, columns, cards, issue-types, versions. |
+| 02    | Done        | [phase-02-boards-columns.md](./phase-02-boards-columns.md)                 | Triển khai board và column/status endpoints theo contract `id`/`position`.     |
+| 03    | Not Started | [phase-03-cards-issues.md](./phase-03-cards-issues.md)                     | Triển khai card/issue CRUD, list filters, drag/drop/move card.                 |
+| 04    | Not Started | [phase-04-issue-types-versions.md](./phase-04-issue-types-versions.md)     | Triển khai issue type và version settings.                                     |
+| 05    | Not Started | [phase-05-dev-data-bootstrap.md](./phase-05-dev-data-bootstrap.md)         | Reset dữ liệu dev, chạy Prisma migration và seed tối thiểu.                    |
+| 06    | Not Started | [phase-06-fe-verification.md](./phase-06-fe-verification.md)               | Kết nối FE đã refactor với BE mới và kiểm thử các màn hình.                    |
+| 07    | In Progress | [phase-07-hardening-cleanup.md](./phase-07-hardening-cleanup.md)           | Test, permission, response DTO, tài liệu vận hành.                             |
+
+## Endpoint cần giữ
 
 ### Health/status
 
@@ -92,25 +98,25 @@ GET /v1/cards/:id
 PUT /v1/cards/:id
 ```
 
-## Compatibility response bat buoc
+## Response contract mới
 
 ### Board detail
 
 ```json
 {
-  "_id": "board-id",
+  "id": 1,
   "title": "Project",
+  "boardCode": "PIPC",
   "description": "",
-  "type": "public",
-  "members": [{ "userId": "1", "role": 1 }],
-  "columnOrderIds": ["column-id"],
+  "type": "PUBLIC",
+  "members": [{ "userId": 1, "role": "ADMIN" }],
   "columns": [
     {
-      "_id": "column-id",
-      "boardId": "board-id",
+      "id": 1,
+      "boardId": 1,
       "title": "To Do",
       "statusColor": 7,
-      "cardOrderIds": ["card-id"],
+      "position": 0,
       "cards": []
     }
   ]
@@ -126,6 +132,19 @@ PUT /v1/cards/:id
 }
 ```
 
+Card item/detail tối thiểu cần trả thêm:
+
+```json
+{
+  "id": 1,
+  "boardId": 1,
+  "columnId": 1,
+  "cardNumber": 4119,
+  "cardCode": "PIPC-4119",
+  "title": "Issue title"
+}
+```
+
 ### Issue type/version list
 
 ```json
@@ -135,11 +154,11 @@ PUT /v1/cards/:id
 }
 ```
 
-## Definition of done chung
+## Tiêu chí hoàn tất chung
 
-- `npm run build` pass.
+- `npm run build` pass cho BE.
 - `npx prisma validate` pass.
-- Endpoint phase do chay duoc bang curl/Postman.
-- FE man hinh lien quan khong can sua parser response.
-- Khong xoa/sua logic FE tru khi da xac nhan BE khong the giu contract.
-- Neu co thay doi contract bat buoc, ghi ro file FE can sua va ly do.
+- FE type-check/lint không còn reference legacy `_id`, `columnOrderIds`, `cardOrderIds`.
+- Endpoint của phase đó chạy được bằng curl/Postman.
+- Không expose `password`, `verifyToken`, refresh token hash.
+- Nếu response cần format date hoặc lọc field nhạy cảm, dùng DTO/serializer mỏng thay vì mapper compatibility.

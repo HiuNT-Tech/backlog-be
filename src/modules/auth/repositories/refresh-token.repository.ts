@@ -35,7 +35,7 @@ export class RefreshTokenRepository {
   }
 
   async rotate(input: {
-    sessionId: string;
+    sessionId: number;
     userId: number;
     newTokenHash: string;
     newExpiresAt: Date;

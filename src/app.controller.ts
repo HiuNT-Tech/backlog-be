@@ -14,4 +14,10 @@ export class AppController {
       status: 'ok',
     };
   }
+
+  @Public()
+  @Get('status')
+  getStatus() {
+    return { message: 'APIs V1 are ready to use.' };
+  }
 }

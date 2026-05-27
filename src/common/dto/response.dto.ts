@@ -1,3 +1,5 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 type ApiResponseOptions = {
   requestId?: string;
 };
@@ -66,11 +68,27 @@ export class ApiSuccessResponseDto<T> extends ApiResponseDto {
 }
 
 export class ApiErrorResponseDto extends ApiResponseDto {
+  @ApiProperty({ example: '4f8a8f2b-4b9e-4a5a-9e14-4c8143dd0bb9' })
   override requestId: string;
+
+  @ApiProperty({ example: 400 })
   statusCode: number;
+
+  @ApiProperty({ example: '/v1/auth/login' })
   path: string;
+
+  @ApiProperty({ example: 'POST' })
   method: string;
+
+  @ApiProperty({
+    oneOf: [
+      { type: 'string', example: 'Invalid credentials' },
+      { type: 'array', items: { type: 'string' } },
+    ],
+  })
   message: ApiErrorMessage;
+
+  @ApiPropertyOptional({ example: 'INVALID_CREDENTIALS' })
   errorCode?: string;
 
   constructor(options: ApiErrorResponseOptions) {

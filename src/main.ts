@@ -5,8 +5,8 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { setupSwagger } from './config/swagger.config';
 import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
-import { ResponseInterceptor } from '@common/interceptors/response.interceptor';
 import { TimeoutInterceptor } from '@common/interceptors/timeout.interceptor';
 import { FileLogger } from '@common/logger';
 import { AppEnv } from '@common/enums/app-env.enum';
@@ -41,7 +41,11 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: nodeEnv === AppEnv.Production ? undefined : false,
+    }),
+  );
   app.use(compression());
   app.use(cookieParser());
 
@@ -53,10 +57,10 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(app.get(HttpExceptionFilter));
-  app.useGlobalInterceptors(
-    app.get(TimeoutInterceptor),
-    app.get(ResponseInterceptor),
-  );
+  app.useGlobalInterceptors(app.get(TimeoutInterceptor));
+  setupSwagger(app, {
+    enabled: nodeEnv !== AppEnv.Production,
+  });
 
   await app.listen(port);
   const url = await app.getUrl();
