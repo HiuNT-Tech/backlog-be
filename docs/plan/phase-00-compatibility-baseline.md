@@ -1,22 +1,22 @@
-# Phase 00 - Compatibility baseline
+# Phase 00 - Nền tảng tương thích
 
-## Muc tieu
+## Mục tiêu
 
-Lam `be_02` tuong thich voi cach FE hien tai dang goi API truoc khi migrate cac domain service. Neu bo qua phase nay, cac module board/card co viet xong van de vo FE vi sai prefix, sai port, sai response shape hoac guard khong doc cookie.
+Làm `be_02` tương thích với nền tảng runtime FE đang dùng trước khi triển khai các domain service: prefix, port, cookie auth, refresh-token retry và status endpoint. Domain response không giữ Mongo-style legacy; các phase sau dùng contract mới `id`/`position`.
 
-## Hien trang can chu y
+## Hiện trạng cần chú ý
 
-- FE goi API qua `API_ROOT = http://localhost:8017` va path `/v1/...`.
-- `be_02` mac dinh dang dung `PORT=3000`, `API_PREFIX=api/v1`.
-- FE dung cookie `accessToken`/`refreshToken`, khong gui Bearer header.
-- FE interceptor refresh token khi BE tra HTTP `410`.
-- Global `ResponseInterceptor` cua `be_02` dang boc non-paginated response thanh `{ item: data }`, trong khi FE dang expect raw data.
+- FE gọi API qua `API_ROOT`/env trỏ `http://localhost:8017` và path `/v1/...`.
+- `be_02` mặc định đang dùng `PORT=3000`, `API_PREFIX=api/v1`.
+- FE dùng cookie `accessToken`/`refreshToken`, không gửi Bearer header.
+- FE interceptor refresh token khi BE trả HTTP `410`.
+- Global `ResponseInterceptor` của `be_02` đang bọc non-paginated response thành `{ item: data }`, trong khi FE đang expect raw data.
 
-## Cong viec
+## Công việc
 
-### 1. Chot runtime local cho FE
+### [x] 1. Chốt runtime local cho FE
 
-Sua `.env` local cua `be_02`:
+Sửa `.env` local của `be_02`:
 
 ```env
 PORT=8017
@@ -26,18 +26,18 @@ WEBSITE_DOMAIN=http://localhost:3000
 CORS_ORIGINS=http://localhost:3000
 ```
 
-Neu can giu port 3000 cho backend moi thi phai sua FE `utils/constants.ts`, nhung muc tieu phase nay la khong sua FE.
+Nếu FE đổi cách cấu hình API root thì vẫn giữ base URL trỏ về `http://localhost:8017` trong local.
 
-### 2. Giu raw response cho legacy FE endpoints
+### [x] 2. Giữ raw response cho domain endpoints
 
-Can co mot trong hai cach:
+Cần có một trong hai cách:
 
-- Cach A: bo global `ResponseInterceptor` khoi `main.ts` trong giai doan migrate.
-- Cach B: them decorator, vi du `@RawResponse()`, de bypass interceptor cho cac controller FE dang dung.
+- Cách A: bỏ global `ResponseInterceptor` khỏi `main.ts` trong giai đoạn triển khai domain.
+- Cách B: thêm decorator, ví dụ `@RawResponse()`, để bypass interceptor cho các controller FE đang dùng.
 
-Khuyen nghi phase dau dung cach A cho nhanh va it rui ro voi FE. Sau khi migrate xong co the chuan hoa lai response o phase cleanup.
+Khuyến nghị phase đầu dùng cách A cho nhanh và ít rủi ro. Sau khi domain chạy ổn có thể chuẩn hóa lại response envelope ở phase cleanup.
 
-Endpoint can raw response:
+Endpoint cần raw response:
 
 ```txt
 /v1/auth/*
@@ -46,29 +46,29 @@ Endpoint can raw response:
 /v1/cards/*
 ```
 
-### 3. JWT guard doc cookie
+### [x] 3. JWT guard đọc cookie
 
-Update JWT strategy hoac custom extractor de doc:
+Update JWT strategy hoặc custom extractor để đọc:
 
 ```txt
 req.cookies.accessToken
 Authorization: Bearer <token>
 ```
 
-Thu tu uu tien:
+Thứ tự ưu tiên:
 
-1. `accessToken` cookie, vi FE hien dung cookie.
-2. Bearer token, de khong mat kha nang test bang Swagger/Postman.
+1. `accessToken` cookie, vì FE hiện dùng cookie.
+2. Bearer token, để không mất khả năng test bằng Swagger/Postman.
 
-### 4. Access token expired tra HTTP 410
+### [x] 4. Access token expired trả HTTP 410
 
-FE dang co logic:
+FE đang có logic:
 
 ```txt
-Neu response.status === 410 thi goi /v1/auth/refresh_token roi retry request cu.
+Nếu response.status === 410 thì gọi /v1/auth/refresh_token rồi retry request cũ.
 ```
 
-Can map loi JWT expired thanh:
+Cần map lỗi JWT expired thành:
 
 ```json
 {
@@ -77,11 +77,11 @@ Can map loi JWT expired thanh:
 }
 ```
 
-Loi token khac van tra `401`.
+Lỗi token khác vẫn trả `401`.
 
-### 5. Them endpoint status cu
+### [x] 5. Thêm endpoint status cũ
 
-BE cu co:
+BE cũ có:
 
 ```txt
 GET /v1/status
@@ -93,11 +93,11 @@ Response:
 { "message": "APIs V1 are ready to use." }
 ```
 
-`be_02` hien co `/v1/health`; phase nay nen them `/v1/status` de smoke test va deploy check de hon.
+`be_02` hiện có `/v1/health`; phase này nên thêm `/v1/status` để smoke test và deploy check dễ hơn.
 
-### 6. Kiem tra auth contract
+### [x] 6. Kiểm tra auth contract
 
-Auth FE hien dang goi:
+Auth FE hiện đang gọi:
 
 ```txt
 POST /v1/auth/register
@@ -107,15 +107,15 @@ DELETE /v1/auth/logout
 GET /v1/auth/refresh_token
 ```
 
-Can dam bao:
+Cần đảm bảo:
 
-- Register tra object co `email` de FE redirect `/login?registeredEmail=...`.
-- Login tra user raw kem `accessToken`, `refreshToken`.
+- Register trả object có `email` để FE redirect `/login?registeredEmail=...`.
+- Login trả user raw kèm `accessToken`, `refreshToken`.
 - Login set cookie `accessToken`, `refreshToken`.
-- Refresh set lai ca access token va refresh token cookie.
+- Refresh set lại cả access token và refresh token cookie.
 - Logout clear cookies.
 
-## Files du kien dung
+## File dự kiến đụng
 
 ```txt
 src/main.ts
@@ -130,7 +130,7 @@ src/config/app.config.ts
 .env.example
 ```
 
-## Kiem thu
+## Kiểm thử
 
 ### Command
 
@@ -145,7 +145,7 @@ npx prisma validate
 curl http://localhost:8017/v1/status
 ```
 
-Expected:
+Kỳ vọng:
 
 ```json
 { "message": "APIs V1 are ready to use." }
@@ -153,15 +153,21 @@ Expected:
 
 ### Auth smoke test
 
-1. Login thanh cong set cookie.
-2. Goi protected endpoint bang cookie khong co Bearer token.
-3. Sua token expired de xac nhan tra `410`.
-4. FE interceptor goi refresh token va retry request.
+1. Login thành công set cookie.
+2. Gọi protected endpoint bằng cookie không có Bearer token.
+3. Sửa token expired để xác nhận trả `410`.
+4. FE interceptor gọi refresh token và retry request.
 
-## Definition of done
+## Tiêu chí hoàn tất
 
-- FE co the giu `API_ROOT=http://localhost:8017`.
-- `/v1/status` chay.
-- Auth endpoints tra raw response, khong boc `{ item: ... }`.
-- Protected endpoint doc duoc `accessToken` cookie.
-- JWT expired tra `410`, invalid token tra `401`.
+- FE có thể giữ `API_ROOT=http://localhost:8017`.
+- `/v1/status` chạy.
+- Auth endpoints trả raw response, không bọc `{ item: ... }`.
+- Protected endpoint đọc được `accessToken` cookie.
+- JWT expired trả `410`, invalid token trả `401`.
+
+
+## Progress Summary
+
+- **Tasks Completed:** 6/6
+- **Status:** Done

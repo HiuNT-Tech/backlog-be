@@ -18,35 +18,35 @@ Nguyên tắc:
 
 Các collection được sử dụng trực tiếp qua `GET_DB().collection(...)`:
 
-| Collection | File chính | Vai trò hiện tại |
-| --- | --- | --- |
-| `users` | `src/models/userModel.js` | User, auth, profile cơ bản, trạng thái verify account |
-| `counters` | `src/models/counterModel.js` | Bộ đếm sequence, hiện dùng cho `user_code` |
-| `boards` | `src/models/boardModel.js` | Board/project, member nhúng, thứ tự column |
-| `columns` | `src/models/columnModel.js` | Column/status trong board, thứ tự card |
-| `cards` | `src/models/cardModel.js` | Issue/card nghiệp vụ |
-| `issue_types` | `src/models/issueTypeModel.js` | Loại issue theo board |
-| `versions` | `src/models/versionModel.js` | Version/release/milestone theo board |
+| Collection    | File chính                     | Vai trò hiện tại                                      |
+| ------------- | ------------------------------ | ----------------------------------------------------- |
+| `users`       | `src/models/userModel.js`      | User, auth, profile cơ bản, trạng thái verify account |
+| `counters`    | `src/models/counterModel.js`   | Bộ đếm sequence, hiện dùng cho `user_code`            |
+| `boards`      | `src/models/boardModel.js`     | Board/project, member nhúng, thứ tự column            |
+| `columns`     | `src/models/columnModel.js`    | Column/status trong board, thứ tự card                |
+| `cards`       | `src/models/cardModel.js`      | Issue/card nghiệp vụ                                  |
+| `issue_types` | `src/models/issueTypeModel.js` | Loại issue theo board                                 |
+| `versions`    | `src/models/versionModel.js`   | Version/release/milestone theo board                  |
 
 Không tìm thấy `populate()` hay Mongoose `ref`; quan hệ đang được xử lý thủ công bằng `ObjectId`, `$lookup`, array ObjectId và service-level lookup.
 
 ## 3. Quan hệ hiện tại giữa collection
 
-| Quan hệ | Cách hiện tại trong MongoDB | Thiết kế PostgreSQL đề xuất |
-| --- | --- | --- |
-| `boards.members.userId` -> `users._id` | `members` là array object trong `boards`; `$lookup` sang `users` trong `getUsersBoard` | Bảng `board_members` với `user_id integer` FK → `users(id)` |
-| `boards.columnOrderIds[]` -> `columns._id` | Array ObjectId trong `boards` | Cột `position` trong `columns`; có thể giữ bảng/order riêng nếu cần audit |
-| `columns.boardId` -> `boards._id` | ObjectId | FK `columns.board_id` -> `boards.id` |
-| `columns.cardOrderIds[]` -> `cards._id` | Array ObjectId trong `columns` | Cột `position` trong `cards` theo từng column |
-| `cards.boardId` -> `boards._id` | ObjectId | FK `cards.board_id` -> `boards.id` |
-| `cards.columnId` -> `columns._id` | ObjectId | FK `cards.column_id` -> `columns.id` |
-| `cards.assigneeId` -> `users._id` | ObjectId, service lookup qua `userModel.getManyByIds` | `cards.assignee_user_id integer` FK → `users(id)` |
-| `cards.issueTypeId` -> `issue_types._id` | ObjectId + `$lookup` | FK `cards.issue_type_id` -> `issue_types.id` |
-| `cards.versionId` -> `versions._id` | ObjectId | FK `cards.version_id` -> `versions.id` |
-| Lịch sử move/update card | Chưa có collection riêng trong source hiện tại | Thêm `card_activity_logs`; `cards` chỉ giữ `column_id` và `position` hiện tại |
-| `issue_types.boardId` -> `boards._id` | ObjectId | FK `issue_types.board_id` -> `boards.id` |
-| `issue_types` -> `cards` | `$lookup` để đếm issueCount | Query count từ `cards` theo `issue_type_id` |
-| `versions.boardId` -> `boards._id` | ObjectId | FK `versions.board_id` -> `boards.id` |
+| Quan hệ                                    | Cách hiện tại trong MongoDB                                                            | Thiết kế PostgreSQL đề xuất                                                   |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `boards.members.userId` -> `users._id`     | `members` là array object trong `boards`; `$lookup` sang `users` trong `getUsersBoard` | Bảng `board_members` với `user_id integer` FK → `users(id)`                   |
+| `boards.columnOrderIds[]` -> `columns._id` | Array ObjectId trong `boards`                                                          | Cột `position` trong `columns`; có thể giữ bảng/order riêng nếu cần audit     |
+| `columns.boardId` -> `boards._id`          | ObjectId                                                                               | FK `columns.board_id` -> `boards.id`                                          |
+| `columns.cardOrderIds[]` -> `cards._id`    | Array ObjectId trong `columns`                                                         | Cột `position` trong `cards` theo từng column                                 |
+| `cards.boardId` -> `boards._id`            | ObjectId                                                                               | FK `cards.board_id` -> `boards.id`                                            |
+| `cards.columnId` -> `columns._id`          | ObjectId                                                                               | FK `cards.column_id` -> `columns.id`                                          |
+| `cards.assigneeId` -> `users._id`          | ObjectId, service lookup qua `userModel.getManyByIds`                                  | `cards.assignee_user_id integer` FK → `users(id)`                             |
+| `cards.issueTypeId` -> `issue_types._id`   | ObjectId + `$lookup`                                                                   | FK `cards.issue_type_id` -> `issue_types.id`                                  |
+| `cards.versionId` -> `versions._id`        | ObjectId                                                                               | FK `cards.version_id` -> `versions.id`                                        |
+| Lịch sử move/update card                   | Chưa có collection riêng trong source hiện tại                                         | Thêm `card_activity_logs`; `cards` chỉ giữ `column_id` và `position` hiện tại |
+| `issue_types.boardId` -> `boards._id`      | ObjectId                                                                               | FK `issue_types.board_id` -> `boards.id`                                      |
+| `issue_types` -> `cards`                   | `$lookup` để đếm issueCount                                                            | Query count từ `cards` theo `issue_type_id`                                   |
+| `versions.boardId` -> `boards._id`         | ObjectId                                                                               | FK `versions.board_id` -> `boards.id`                                         |
 
 Điểm đã xác nhận / cần lưu ý:
 
@@ -54,7 +54,10 @@ Không tìm thấy `populate()` hay Mongoose `ref`; quan hệ đang được x�
 - `boards.members.role` trong dữ liệu thật lưu dạng số. Khi migrate map `1 -> admin`, `2 -> pm`, `3 -> member`, `4 -> guest`.
 - BE mới dùng soft delete cho dữ liệu nghiệp vụ. PostgreSQL dùng `deleted_at`; không hard delete mặc định.
 - `issue_types.name` cần unique theo board.
-- `boards.slug` cần unique.
+- `boards.board_code` thay thế hoàn toàn slug cho định danh/truy cập project.
+- `boards.board_code` cần unique toàn hệ thống để dùng làm project key/ticket prefix, ví dụ `PIPC`.
+- `cards.card_code` cần unique toàn hệ thống để truy cập/search ticket dạng `PIPC-4119`; `cards.card_number` unique theo board.
+- `boards.next_card_number` là bộ đếm cấp số card tiếp theo, phải tăng trong transaction khi tạo card.
 - `versions.startDate/endDate` dùng PostgreSQL type `date`, API dùng ISO 8601 date-only `YYYY-MM-DD`.
 - Khi migrate cần kiểm tra format dữ liệu cũ trước khi parse.
 - Cần audit lịch sử move card/column. Thêm bảng `card_activity_logs`; bảng `cards` vẫn chỉ lưu `column_id` và `position` hiện tại.
@@ -62,46 +65,46 @@ Không tìm thấy `populate()` hay Mongoose `ref`; quan hệ đang được x�
 
 ## 4. Tất cả collection chuyển PostgreSQL
 
-| Collection | Chuyển PostgreSQL | Lý do |
-| --- | --- | --- |
-| `users` | ĐÃ CHUYỂN | Source of truth cho user. Integer autoincrement PK. FK trực tiếp từ boards, cards, activity_logs. Không cần hybrid lookup MongoDB nữa. |
-| `boards` | Có | Là aggregate root nghiệp vụ. Có quan hệ rõ với columns, cards, issue types, versions, members. PostgreSQL giúp enforce uniqueness, query board/member tốt hơn. |
-| `columns` | Có | Phụ thuộc board, có thứ tự và trạng thái. Phù hợp table quan hệ với FK `board_id`. |
-| `cards` | Có | Dữ liệu nghiệp vụ chính, nhiều filter theo board/status/assignee/priority/issue type/version/date. PostgreSQL phù hợp index và join. |
-| `issue_types` | Có | Reference data theo board, đang join/count với cards. Phù hợp FK và unique constraint theo board. |
-| `versions` | Có | Reference/release data theo board, liên kết cards. Phù hợp FK và date query. |
+| Collection    | Chuyển PostgreSQL | Lý do                                                                                                                                                          |
+| ------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`       | ĐÃ CHUYỂN         | Source of truth cho user. Integer autoincrement PK. FK trực tiếp từ boards, cards, activity_logs. Không cần hybrid lookup MongoDB nữa.                         |
+| `boards`      | Có                | Là aggregate root nghiệp vụ. Có quan hệ rõ với columns, cards, issue types, versions, members. PostgreSQL giúp enforce uniqueness, query board/member tốt hơn. |
+| `columns`     | Có                | Phụ thuộc board, có thứ tự và trạng thái. Phù hợp table quan hệ với FK `board_id`.                                                                             |
+| `cards`       | Có                | Dữ liệu nghiệp vụ chính, nhiều filter theo board/status/assignee/priority/issue type/version/date. PostgreSQL phù hợp index và join.                           |
+| `issue_types` | Có                | Reference data theo board, đang join/count với cards. Phù hợp FK và unique constraint theo board.                                                              |
+| `versions`    | Có                | Reference/release data theo board, liên kết cards. Phù hợp FK và date query.                                                                                   |
 
 Collection giữ MongoDB (tạm thời):
 
-| Collection | Giữ MongoDB | Lý do |
-| --- | --- | --- |
+| Collection | Giữ MongoDB                      | Lý do                                                                                                                     |
+| ---------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `counters` | Có, nếu vẫn phục vụ legacy logic | BE mới không còn copy `verifyToken` sang `userCode`. Counter có thể bỏ nếu không cần sequence number hoặc mã user legacy. |
 
 ## 5. Mapping MongoDB collection -> PostgreSQL table
 
-| MongoDB | PostgreSQL | Ghi chú mapping |
-| --- | --- | --- |
-| `users` | `users` | `_id` -> `legacy_mongo_id`; `id` integer tự tăng; dùng FK trực tiếp cho tất cả bảng nghiệp vụ; `verify_token` chỉ dùng nội bộ cho email verification, không trả ra API response. |
-| `boards` | `boards` | `_id` -> `id uuid`; giữ `legacy_mongo_id`; `members` tách sang `board_members`; `columnOrderIds` thay bằng `columns.position`. |
-| `boards.members[]` | `board_members` | `userId` -> `user_id integer` FK → `users(id)`; `role` -> enum `board_member_role`. |
-| `columns` | `columns` | `boardId` -> `board_id`; `cardOrderIds` thay bằng `cards.position`; `statusColor` -> `status_color_id`. |
-| `cards` | `cards` | `boardId`, `columnId`, `issueTypeId`, `versionId` thành FK; `assigneeId` -> `assignee_user_id integer` FK; `registeredBy` -> `registered_by_user_id integer` FK. |
-| Không có collection cũ | `card_activity_logs` | Bảng mới để audit lịch sử di chuyển card, đổi column, đổi position và các hành động quan trọng khác. |
-| `issue_types` | `issue_types` | `boardId` -> `board_id`; `statusColor` -> `status_color_id`. |
-| `versions` | `versions` | `boardId` -> `board_id`; `startDate`, `endDate` nên dùng `date`. |
-| constants `PRIORITY` | `priorities` hoặc enum | Đề xuất master table để dễ hiển thị tên/level. |
-| constants `StatusColor` | `status_colors` | Master table thay vì số magic 1..10. |
-| constants `BOARD_TYPES` | enum `board_type` | `public`, `private`. |
-| constants `ROLE` | enum `board_member_role` | Dữ liệu MongoDB đang lưu số: `1 -> admin`, `2 -> pm`, `3 -> member`, `4 -> guest`. |
+| MongoDB                 | PostgreSQL               | Ghi chú mapping                                                                                                                                                                                     |
+| ----------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                 | `users`                  | `_id` -> `legacy_mongo_id`; `id` integer tự tăng; dùng FK trực tiếp cho tất cả bảng nghiệp vụ; `verify_token` chỉ dùng nội bộ cho email verification, không trả ra API response.                    |
+| `boards`                | `boards`                 | `_id` -> `id uuid`; giữ `legacy_mongo_id`; thêm `board_code` project key và `next_card_number`; `members` tách sang `board_members`; `columnOrderIds` thay bằng `columns.position`.                 |
+| `boards.members[]`      | `board_members`          | `userId` -> `user_id integer` FK → `users(id)`; `role` -> enum `board_member_role`.                                                                                                                 |
+| `columns`               | `columns`                | `boardId` -> `board_id`; `cardOrderIds` thay bằng `cards.position`; `statusColor` -> `status_color_id`.                                                                                             |
+| `cards`                 | `cards`                  | `boardId`, `columnId`, `issueTypeId`, `versionId` thành FK; thêm `card_number` và `card_code`; `assigneeId` -> `assignee_user_id integer` FK; `registeredBy` -> `registered_by_user_id integer` FK. |
+| Không có collection cũ  | `card_activity_logs`     | Bảng mới để audit lịch sử di chuyển card, đổi column, đổi position và các hành động quan trọng khác.                                                                                                |
+| `issue_types`           | `issue_types`            | `boardId` -> `board_id`; `statusColor` -> `status_color_id`.                                                                                                                                        |
+| `versions`              | `versions`               | `boardId` -> `board_id`; `startDate`, `endDate` nên dùng `date`.                                                                                                                                    |
+| constants `PRIORITY`    | `priorities` hoặc enum   | Đề xuất master table để dễ hiển thị tên/level.                                                                                                                                                      |
+| constants `StatusColor` | `status_colors`          | Master table thay vì số magic 1..10.                                                                                                                                                                |
+| constants `BOARD_TYPES` | enum `board_type`        | `public`, `private`.                                                                                                                                                                                |
+| constants `ROLE`        | enum `board_member_role` | Dữ liệu MongoDB đang lưu số: `1 -> admin`, `2 -> pm`, `3 -> member`, `4 -> guest`.                                                                                                                  |
 
 ## 6. Đề xuất master/reference data
 
 Nên có master data trong PostgreSQL:
 
-| Table | Dữ liệu đề xuất | Lý do |
-| --- | --- | --- |
+| Table           | Dữ liệu đề xuất                                                                              | Lý do                                                                                                       |
+| --------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `status_colors` | 1 red, 2 orange, 3 pink, 4 indigo, 5 blue, 6 teal, 7 green, 8 yellow, 9 bright_red, 10 black | Hiện `columns.statusColor` và `issue_types.statusColor` dùng số. Tách master để UI lấy label/token ổn định. |
-| `priorities` | 1 low, 2 normal, 3 high | Hiện `cards.priorityId` dùng constants số. Tách master để filter/sort/label rõ ràng. |
+| `priorities`    | 1 low, 2 normal, 3 high                                                                      | Hiện `cards.priorityId` dùng constants số. Tách master để filter/sort/label rõ ràng.                        |
 
 Có thể dùng enum thay master table cho priority/status color nếu domain rất cố định. Tuy nhiên vì UI thường cần label/color token, master table linh hoạt hơn.
 
@@ -143,6 +146,8 @@ Khuyến nghị chung:
 - `cards` chỉ lưu trạng thái hiện tại gồm `column_id` và `position`. Lịch sử di chuyển card/đổi column/đổi position và các hành động quan trọng khác lưu trong `card_activity_logs`.
 - Index các truy vấn hiện có:
   - Board theo member: `board_members(user_id, board_id)`.
+  - Board theo project key: unique `boards(board_code)`.
+  - Card theo ticket key: unique `cards(card_code)`, unique `cards(board_id, card_number)`.
   - Card theo board/filter: `cards(board_id, deleted_at)`, `cards(column_id, position)`, `cards(assignee_user_id)`, `cards(issue_type_id)`, `cards(version_id)`, `cards(priority_id)`.
   - Search title/name có thể dùng trigram index sau nếu cần.
 
@@ -181,7 +186,9 @@ Khuyến nghị chung:
 - ĐÃ CHỐT `cards.registeredBy` có tồn tại, map sang `cards.registered_by_user_id integer` FK.
 - ĐÃ CHỐT `boards.members.role` lưu dạng số, migrate theo mapping `1 admin`, `2 pm`, `3 member`, `4 guest`.
 - ĐÃ CHỐT dùng soft delete bằng `deleted_at` cho dữ liệu nghiệp vụ và user.
-- ĐÃ CHỐT `issue_types.name` unique theo board và `boards.slug` unique.
+- ĐÃ CHỐT `issue_types.name` unique theo board và không dùng `boards.slug`.
+- ĐÃ CHỐT `boards.board_code` unique và `cards.card_code` unique để hỗ trợ mã issue dạng `PIPC-4119`.
+- ĐÃ CHỐT sinh `card_code` từ `boards.board_code` + `boards.next_card_number` trong transaction.
 - ĐÃ CHỐT `versions.startDate/endDate` dùng PostgreSQL type `date`, API dùng ISO 8601 date-only `YYYY-MM-DD`.
 - ĐÃ CHỐT khi migrate cần kiểm tra format dữ liệu cũ trước khi parse.
 - ĐÃ CHỐT cần audit lịch sử move card/column bằng bảng `card_activity_logs`.

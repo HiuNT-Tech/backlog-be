@@ -1,10 +1,10 @@
-# Phase 02 - Boards va columns/statuses
+# Phase 02 - Boards và columns/statuses
 
-## Muc tieu
+## Mục tiêu
 
-Migrate board va column/status tu Express/MongoDB sang NestJS/PostgreSQL. Day la nen cho board page, dashboard va settings/statuses cua FE.
+Triển khai board và column/status trên NestJS/PostgreSQL theo contract mới dùng `id` và `position`. Backend cũ chỉ dùng để tham chiếu nghiệp vụ, không giữ Mongo-style response.
 
-## API can implement
+## API cần implement
 
 ```txt
 GET /v1/boards
@@ -18,7 +18,7 @@ PUT /v1/columns/:id
 DELETE /v1/columns/:id
 ```
 
-## Module/file du kien
+## Module/file dự kiến
 
 ```txt
 src/modules/boards/
@@ -26,7 +26,6 @@ src/modules/boards/
   boards.controller.ts
   boards.service.ts
   dto/
-  mappers/
   repositories/
 
 src/modules/columns/
@@ -34,112 +33,133 @@ src/modules/columns/
   columns.controller.ts
   columns.service.ts
   dto/
-  mappers/
   repositories/
 ```
 
+Không tạo `mappers/` legacy. Nếu cần response boundary thì đặt DTO/serializer mỏng trong `dto/` hoặc `presenters/`.
+
 ## Board service
 
-### POST /v1/boards
+### [x] POST /v1/boards
 
-Payload FE:
+Payload FE mới:
 
 ```json
 {
   "title": "Project",
+  "boardCode": "PIPC",
   "description": "",
-  "type": "public"
+  "type": "PUBLIC"
 }
 ```
 
 Logic:
 
-1. Lay current user tu JWT cookie.
-2. Validate title 3..50, description max 255, type `public/private`.
-3. Tao slug tu title.
-4. Tao board.
-5. Tao board member cho current user role `ADMIN`.
-6. Tao 4 default columns:
-   - To Do, statusColor 7
-   - In Progress, statusColor 5
-   - Resolved, statusColor 6
-   - Closed, statusColor 4
-7. Tat ca nam trong `prisma.$transaction`.
-8. Return board mapped raw, co `_id`, `columnOrderIds`, `columns`.
+1. Lấy current user từ JWT cookie.
+2. Validate title 3..50, boardCode 2..16, description max 255, type `PUBLIC/PRIVATE`.
+3. Normalize `boardCode` từ FE: trim, uppercase, chỉ cho `A-Z`, `0-9`, `_`; không cho khoảng trắng/ký tự URL đặc biệt.
+4. Check `boardCode` unique toàn hệ thống vì sẽ dùng để truy cập/search issue dạng `PIPC-4119`.
+5. Không tạo slug; `boardCode` là mã truy cập/search project.
+6. Tạo board với `boardCode` và `nextCardNumber = 1`.
+7. Tạo board member cho current user role `ADMIN`.
+8. Tạo 4 default columns:
+   - To Do, statusColor 7, position 0
+   - In Progress, statusColor 5, position 1
+   - Resolved, statusColor 6, position 2
+   - Closed, statusColor 4, position 3
+9. Tất cả nằm trong `prisma.$transaction`.
+10. Return board theo contract mới.
 
-### GET /v1/boards
+Ghi chú contract:
+
+- API response dùng camelCase `boardCode`.
+- Nếu FE đang gửi `board_code`, DTO có thể nhận alias tạm thời nhưng service phải normalize về field domain `boardCode`.
+- Không cho update tự do `nextCardNumber` từ API.
+
+### [x] GET /v1/boards
 
 Logic:
 
-1. Lay current user.
+1. Lấy current user.
 2. Query `BoardMember` theo `userId`.
-3. Include board chua deleted.
-4. Sort `board.updatedAt desc`.
-5. Return `Board[]` raw, khong boc object.
+3. Include board chưa deleted.
+4. Include columns chưa deleted, sort `position asc`.
+5. Sort board `updatedAt desc`.
+6. Return `Board[]` raw, không bọc object.
 
-Response toi thieu:
+Response tối thiểu:
 
 ```json
 [
   {
-    "_id": "board-id",
+    "id": 1,
     "title": "Project",
+    "boardCode": "PIPC",
     "description": "",
-    "type": "public",
-    "members": [{ "userId": "1", "role": 1 }],
-    "columnOrderIds": ["column-id"],
+    "type": "PUBLIC",
+    "members": [{ "userId": 1, "role": "ADMIN" }],
     "columns": []
   }
 ]
 ```
 
-### GET /v1/boards/:id
+### [x] GET /v1/boards/:id
 
 Logic:
 
-1. Resolve `:id` theo `id` hoac `legacyMongoId`.
-2. Check board ton tai va current user la member.
-3. Include columns sort `position asc`.
-4. Include cards theo board, chua deleted, sort `position asc`.
-5. Neu query co `assigneeId`, filter cards theo assignee.
-6. Gan cards vao tung column.
-7. Build `columnOrderIds` va `cardOrderIds`.
-8. Return board raw.
+1. Parse `:id` thành int.
+2. Check board tồn tại và current user là member.
+3. Include columns chưa deleted, sort `position asc`.
+4. Include cards chưa deleted theo board, sort `position asc`.
+5. Nếu query có `assigneeUserId`, filter cards theo assignee.
+6. Gán cards vào từng column.
+7. Return board với `columns[].cards[]`, mỗi column/card có `position`.
 
-Response bat buoc cho FE:
+Response bắt buộc cho FE mới:
 
 ```txt
-board._id
-board.columnOrderIds
+board.id
+board.boardCode
 board.columns[]
+board.columns[].position
 board.columns[].cards[]
-column._id
-column.cardOrderIds
-card._id
+column.id
+card.id
+card.cardCode
+card.cardNumber
+card.position
 ```
 
-### PUT /v1/boards/:id
+### [x] PUT /v1/boards/:id
 
-Payload FE co the gui:
+Payload FE mới có thể gửi:
 
 ```json
 {
   "title": "Project",
+  "boardCode": "PIPC",
   "description": "",
-  "type": "public",
-  "columnOrderIds": ["column-id-1", "column-id-2"]
+  "type": "PUBLIC",
+  "columns": [
+    { "id": 1, "position": 0 },
+    { "id": 2, "position": 1 }
+  ]
 }
 ```
 
 Logic:
 
-- Khong cho update `_id`, `id`, `createdAt`.
-- Neu co `columnOrderIds`, update `columns.position` theo thu tu mang.
-- Neu title doi, co the update slug.
-- Check permission member role `ADMIN` hoac `PM`.
-- Return board da update raw.
+- Không cho update `id`, `createdAt`, `createdByUserId`.
+- Nếu update `boardCode`, chỉ cho khi không có card hoặc phải chốt policy đổi mã:
+  - Khuyến nghị phase đầu: chặn đổi `boardCode` sau khi board đã có card để tránh đổi toàn bộ ticket key.
+  - Nếu board chưa có card, cho đổi và validate unique giống create board.
+- Nếu có `columns`, update `columns.position` theo payload.
+- Nếu title đổi, chỉ update title; không còn slug trong hệ thống.
+- Check permission member role `ADMIN` hoặc `PM`.
+- Transaction khi reorder.
+- Return board đã update theo contract mới.
 
-### GET /v1/boards/:id/usersBoard
+### [x] GET /v1/boards/:id/usersBoard
 
 Query FE:
 
@@ -152,10 +172,10 @@ limit
 
 Logic:
 
-1. Check board ton tai.
+1. Check board tồn tại.
 2. Query `BoardMember` join user.
 3. Filter search theo email/displayName/userCode.
-4. Filter role neu co.
+4. Filter role enum nếu có.
 5. Pagination theo `skip/limit`.
 6. Return `{ total, items }`.
 
@@ -163,38 +183,38 @@ Item response:
 
 ```json
 {
-  "userId": "1",
-  "role": 1,
+  "userId": 1,
+  "role": "ADMIN",
   "email": "user@example.com",
   "username": "user",
   "displayName": "User",
   "avatar": null,
-  "_destroy": false,
   "createdAt": "2026-05-25T00:00:00.000Z",
   "updatedAt": null
 }
 ```
 
-`username` co the map tu email prefix neu DB moi khong luu username.
+`username` có thể map từ email prefix nếu DB mới không lưu username.
 
 ## Column service
 
-### GET /v1/columns?boardId=...
+### [x] GET /v1/columns?boardId=...
 
 Logic:
 
 1. Validate boardId.
 2. Check member.
-3. Query columns cua board, chua deleted, sort position.
-4. Return `Column[]` raw.
+3. Query columns của board, chưa deleted, sort position.
+4. Include `_count.cards` hoặc cards nếu settings cần số issue.
+5. Return `Column[]`.
 
-### POST /v1/columns
+### [x] POST /v1/columns
 
 Payload:
 
 ```json
 {
-  "boardId": "board-id",
+  "boardId": 1,
   "title": "Review",
   "statusColor": 7
 }
@@ -202,41 +222,44 @@ Payload:
 
 Logic:
 
-1. Check board ton tai va user co role `ADMIN/PM`.
-2. Tinh `position = max(position) + 1`.
+1. Check board tồn tại và user có role `ADMIN/PM`.
+2. Tính `position = max(position) + 1`.
 3. Create column.
-4. Return column raw voi `cards: []`, `cardOrderIds: []`.
+4. Return column với `cards: []`.
 
-### PUT /v1/columns/:id
+### [x] PUT /v1/columns/:id
 
-Payload co the gom:
+Payload có thể gồm:
 
 ```json
 {
   "title": "Done",
   "statusColor": 4,
-  "cardOrderIds": ["card-id-1", "card-id-2"]
+  "cards": [
+    { "id": 1, "position": 0 },
+    { "id": 2, "position": 1 }
+  ]
 }
 ```
 
 Logic:
 
-- Update title/statusColor neu co.
-- Neu co `cardOrderIds`, update `cards.position` trong column theo thu tu FE gui.
-- Check cards trong `cardOrderIds` deu thuoc column.
+- Update title/statusColor nếu có.
+- Nếu có `cards`, update `cards.position` trong column theo payload.
+- Check cards trong payload đều thuộc column.
 - Transaction khi reorder.
-- Return column raw.
+- Return column.
 
-### DELETE /v1/columns/:id
+### [x] DELETE /v1/columns/:id
 
-Backend cu xoa column va xoa toan bo cards thuoc column. De giu behavior FE:
+Để giữ behavior khi xóa column:
 
-1. Check column ton tai.
+1. Check column tồn tại.
 2. Check permission `ADMIN/PM`.
 3. Trong transaction:
-   - Soft delete hoac hard delete cards thuoc column.
-   - Soft delete hoac hard delete column.
-   - Reorder lai cac column con lai neu can.
+   - Soft delete hoặc hard delete cards thuộc column.
+   - Soft delete hoặc hard delete column.
+   - Reorder lại các column còn lại nếu cần.
 4. Return:
 
 ```json
@@ -245,27 +268,32 @@ Backend cu xoa column va xoa toan bo cards thuoc column. De giu behavior FE:
 
 ## Permission
 
-Phase dau toi thieu:
+Phase đầu tối thiểu:
 
-| Action | Role |
-| --- | --- |
-| View board/list columns | Board member |
-| Create/update/delete board | ADMIN, PM |
-| Create/update/delete column | ADMIN, PM |
-| View members | Board member |
+| Action                      | Role         |
+| --------------------------- | ------------ |
+| View board/list columns     | Board member |
+| Create/update/delete board  | ADMIN, PM    |
+| Create/update/delete column | ADMIN, PM    |
+| View members                | Board member |
 
-## Kiem thu FE
+## Kiểm thử FE
 
-- Dashboard load danh sach boards.
-- Create board xong redirect vao board moi.
-- Board page load columns/cards.
-- Drag column reorder goi `PUT /v1/boards/:id`.
+- Dashboard load danh sách boards bằng `id`.
+- Create board xong redirect vào board mới.
+- Board page load columns/cards sort theo `position`.
+- Drag column reorder gửi `{ columns: [{ id, position }] }`.
 - Settings statuses load columns.
-- Create/delete status chay.
+- Create/delete status chạy.
 
-## Definition of done
+## Tiêu chí hoàn tất
 
-- Tat ca endpoint phase nay pass smoke test.
-- FE dashboard va board page chay khong sua parser.
-- Board detail co day du `_id`, `columnOrderIds`, `columns`, `cardOrderIds`.
-- Reorder column/card trong cung column reload lai van dung thu tu.
+- Tất cả endpoint phase này pass smoke test.
+- FE dashboard và board page không còn dùng `_id` hoặc order arrays.
+- Board detail có `columns`, `columns[].position`, `columns[].cards`, `cards[].position`.
+- Reorder column/card trong cùng column reload lại vẫn đúng thứ tự.
+
+## Progress Summary
+
+- **Tasks Completed:** 9/9
+- **Status:** Done

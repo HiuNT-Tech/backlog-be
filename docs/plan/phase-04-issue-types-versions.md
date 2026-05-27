@@ -1,10 +1,10 @@
-# Phase 04 - Issue types va versions
+# Phase 04 - Issue types và versions
 
-## Muc tieu
+## Mục tiêu
 
-Migrate hai nhom API settings con lai: issue type va version. Hai nhom nay duoc FE dung trong settings, add issue, issue detail va issue filters.
+Triển khai hai nhóm API settings còn lại: issue type và version. Hai nhóm này được FE dùng trong settings, add issue, issue detail và issue filters. Contract mới chỉ dùng `id`, không dùng `_id`.
 
-## API can implement
+## API cần implement
 
 ### Issue types
 
@@ -25,7 +25,7 @@ PUT /v1/boards/:id/versions/:versionId
 DELETE /v1/boards/:id/versions/:versionId
 ```
 
-## Module/file du kien
+## Module/file dự kiến
 
 ```txt
 src/modules/issue-types/
@@ -33,7 +33,6 @@ src/modules/issue-types/
   issue-types.controller.ts
   issue-types.service.ts
   dto/
-  mappers/
   repositories/
 
 src/modules/versions/
@@ -41,13 +40,14 @@ src/modules/versions/
   versions.controller.ts
   versions.service.ts
   dto/
-  mappers/
   repositories/
 ```
 
+Không tạo `mappers/` legacy.
+
 ## Issue types
 
-### GET /v1/boards/:id/issue-types
+### [ ] GET /v1/boards/:id/issue-types
 
 Query FE:
 
@@ -60,19 +60,19 @@ limit
 Logic:
 
 1. Resolve board.
-2. Check current user la board member.
+2. Check current user là board member.
 3. Filter `name contains keyword`, case-insensitive.
 4. Pagination theo `skip/limit`.
 5. Sort `createdAt desc`.
-6. Count cards dang dung moi issue type.
+6. Count cards đang dùng mỗi issue type.
 7. Return:
 
 ```json
 {
   "items": [
     {
-      "_id": "issue-type-id",
-      "boardId": "board-id",
+      "id": 1,
+      "boardId": 1,
       "name": "Bug",
       "statusColor": 1,
       "issueCount": 2,
@@ -84,30 +84,29 @@ Logic:
 }
 ```
 
-Luu y: FE version/issue-type hooks dang doc `count`, khong phai `total`.
+Lưu ý: FE version/issue-type hooks đang đọc `count`, không phải `total`.
 
-### POST /v1/boards/:id/issue-types
+### [ ] POST /v1/boards/:id/issue-types
 
 Payload:
 
 ```json
 {
   "name": "Bug",
-  "statusColor": 1,
-  "boardId": "board-id"
+  "statusColor": 1
 }
 ```
 
 Logic:
 
-- Board id uu tien route param, body `boardId` chi de compatibility.
+- Board id lấy từ route param.
 - Check permission `ADMIN/PM`.
 - Validate `name` 3..50.
 - Validate `statusColor` 1..10, default 1.
 - Unique name theo board.
-- Return item raw.
+- Return item.
 
-### PUT /v1/boards/:id/issue-types/:issueTypeId
+### [ ] PUT /v1/boards/:id/issue-types/:issueTypeId
 
 Payload:
 
@@ -120,36 +119,28 @@ Payload:
 
 Logic:
 
-- Check issue type thuoc board.
+- Check issue type thuộc board.
 - Check permission `ADMIN/PM`.
-- Validate field neu co.
-- Neu doi name, check unique trong board.
-- Return item raw.
+- Validate field nếu có.
+- Nếu đổi name, check unique trong board.
+- Return item.
 
-### DELETE /v1/boards/:id/issue-types/:issueTypeId
+### [ ] DELETE /v1/boards/:id/issue-types/:issueTypeId
 
-Backend cu delete thanh cong. Voi DB moi co FK, de giu UX FE nen dung mot trong hai cach:
+Với DB mới có FK:
 
-- Khuyen nghi phase dau: FK card.issueTypeId `onDelete: SetNull`, delete issue type van thanh cong.
-- Neu muon bao toan du lieu: soft delete issue type va mapper card khong include issue type da deleted.
+- FK card.issueTypeId `onDelete: SetNull`, delete issue type vẫn thành công.
+- Hoặc soft delete issue type nếu muốn bảo toàn dữ liệu settings.
 
 Response:
-
-```json
-{ "deletedCount": 1 }
-```
-
-Hoac neu dung response message:
 
 ```json
 { "deleteResult": "Issue type deleted successfully!" }
 ```
 
-Can chon mot dang va giu onError FE khong phu thuoc noi dung response.
-
 ## Versions
 
-### GET /v1/boards/:id/versions
+### [ ] GET /v1/boards/:id/versions
 
 Query FE:
 
@@ -162,7 +153,7 @@ limit
 Logic:
 
 1. Resolve board.
-2. Check current user la board member.
+2. Check current user là board member.
 3. Filter name contains keyword.
 4. Pagination `skip/limit`.
 5. Sort `createdAt desc`.
@@ -172,8 +163,8 @@ Logic:
 {
   "items": [
     {
-      "_id": "version-id",
-      "boardId": "board-id",
+      "id": 1,
+      "boardId": 1,
       "name": "v1.0",
       "startDate": "2026-05-25",
       "endDate": "2026-05-30",
@@ -186,7 +177,7 @@ Logic:
 }
 ```
 
-### POST /v1/boards/:id/versions
+### [ ] POST /v1/boards/:id/versions
 
 Payload:
 
@@ -205,53 +196,52 @@ Logic:
 - Check permission `ADMIN/PM`.
 - Validate name 3..50.
 - Validate description max 500.
-- `startDate <= endDate` neu ca hai co gia tri.
-- Return item raw.
+- `startDate <= endDate` nếu cả hai có giá trị.
+- Return item.
 
-### GET /v1/boards/:id/versions/:versionId
+### [ ] GET /v1/boards/:id/versions/:versionId
 
 Logic:
 
-- Check board ton tai.
-- Check version ton tai va thuoc board.
+- Check board tồn tại.
+- Check version tồn tại và thuộc board.
 - Check board member.
-- Return item raw.
+- Return item.
 
-### PUT /v1/boards/:id/versions/:versionId
+### [ ] PUT /v1/boards/:id/versions/:versionId
 
 Logic:
 
-- Check version thuoc board.
-- Merge existing + payload roi validate `startDate <= endDate`.
+- Check version thuộc board.
+- Merge existing + payload rồi validate `startDate <= endDate`.
 - Update allowed fields: name, startDate, endDate, description.
-- Return item raw.
+- Return item.
 
-### DELETE /v1/boards/:id/versions/:versionId
+### [ ] DELETE /v1/boards/:id/versions/:versionId
 
-Backend cu delete thanh cong. De giu behavior FE:
+Để giữ behavior khi xóa version:
 
-- FK card.versionId `onDelete: SetNull`, hoac soft delete version.
+- FK card.versionId `onDelete: SetNull`, hoặc soft delete version.
 - Return:
 
 ```json
 { "deleteResult": "Version deleted successfully!" }
 ```
 
-## Kiem thu FE
+## Kiểm thử FE
 
-- Settings Issue Types load list/pagination.
-- Create/edit/delete issue type.
-- Add issue page lay issue types de chon.
-- Issue list filter theo issue type.
-- Settings Versions load list/pagination.
-- Create/edit/delete version.
-- Add issue va issue detail lay versions de chon.
-- Issue list filter theo version.
+- Settings issue types list/create/edit/delete dùng `id`.
+- Settings versions list/create/edit/delete dùng `id`.
+- Add issue dropdown issue type/version dùng `id`.
+- Issue detail hiển thị và update issue type/version đúng.
 
-## Definition of done
+## Tiêu chí hoàn tất
 
-- Issue type list tra `{ items, count }`.
-- Version list tra `{ items, count }`.
-- Date version map `YYYY-MM-DD`.
-- Delete khong gay loi FK va FE refresh list duoc.
-- Build pass.
+- Endpoint settings pass smoke test.
+- Response không chứa `_id`.
+- BE không cần mapper compatibility.
+
+## Progress Summary
+
+- **Tasks Completed:** 0/9
+- **Status:** Not Started

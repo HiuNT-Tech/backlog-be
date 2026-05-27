@@ -1,12 +1,12 @@
-# Phase 07 - Hardening va cleanup
+# Phase 07 - Hardening và cleanup
 
-## Muc tieu
+## Mục tiêu
 
-Sau khi FE chay on voi `be_02`, bo sung test, permission chi tiet, cleanup compatibility tam thoi va chuan hoa tai lieu van hanh.
+Sau khi FE chạy ổn với `be_02`, bổ sung test, permission chi tiết, response DTO/serializer rõ ràng và chuẩn hóa tài liệu vận hành.
 
-## Test can bo sung
+## Test cần bổ sung
 
-### Unit tests
+### [ ] Unit tests
 
 ```txt
 boards.service.spec.ts
@@ -16,17 +16,17 @@ issue-types.service.spec.ts
 versions.service.spec.ts
 ```
 
-Case can co:
+Case cần có:
 
-- Mapper tra `_id`.
-- Role mapping board member.
-- Board create tao default columns.
+- Board create tạo default columns đúng position.
 - Column reorder update positions.
 - Card move update positions.
+- Board member role dùng enum string.
 - Version date validation.
 - Issue type issueCount.
+- Response DTO không expose field nhạy cảm.
 
-### E2E tests
+### [ ] E2E tests
 
 ```txt
 test/e2e/boards.e2e-spec.ts
@@ -34,7 +34,7 @@ test/e2e/cards.e2e-spec.ts
 test/e2e/settings.e2e-spec.ts
 ```
 
-Flow can test:
+Flow cần test:
 
 1. Register/activate/login test user.
 2. Create board.
@@ -44,9 +44,9 @@ Flow can test:
 6. Create issue type/version.
 7. List cards with filters.
 
-## Permission hardening
+## [ ] Permission hardening
 
-Phase dau co the chi check member. Phase cleanup can siết:
+Phase đầu có thể chỉ check member. Phase cleanup cần siết:
 
 | Action | Role |
 | --- | --- |
@@ -59,32 +59,22 @@ Phase dau co the chi check member. Phase cleanup can siết:
 | Manage members | ADMIN |
 | Delete board | ADMIN |
 
-Can tao helper:
+Cần tạo helper:
 
 ```txt
 BoardAccessService.ensureMember(boardId, userId)
 BoardAccessService.ensureRole(boardId, userId, roles)
 ```
 
-## Response cleanup
+## [ ] Response hardening
 
-Compatibility phase dau giu raw response. Sau khi FE da on co 2 lua chon:
+Contract mới giữ raw response domain trong phase triển khai để FE đơn giản:
 
-### Lua chon A - Giu raw response lau dai
+- `GET /v1/boards` trả `Board[]`.
+- `GET /v1/boards/:id/cards` trả `{ total, items }`.
+- `GET /v1/boards/:id/issue-types` và versions trả `{ items, count }`.
 
-Phu hop neu FE dang don gian, khong muon refactor.
-
-### Lua chon B - Chuan hoa response moi
-
-Chi lam khi co time sua FE:
-
-```json
-{
-  "item": {}
-}
-```
-
-Hoac:
+Sau khi ổn, nếu muốn chuẩn hóa envelope:
 
 ```json
 {
@@ -93,26 +83,32 @@ Hoac:
 }
 ```
 
-Neu chon B, can tao phase FE rieng, khong lam chung voi backend migration.
+Chỉ làm khi có phase FE riêng. Không trộn với triển khai domain.
 
-## ID cleanup
+## [x] ID/order cleanup
 
-Phase dau response tra `_id`. Sau khi on co the:
+Contract mới đã chọn:
 
-1. FE tiep tuc dung `_id` lau dai.
-2. FE refactor dan sang `id`, backend tra ca `_id` va `id`.
+- Chỉ `id`, không `_id`.
+- Chỉ `position`, không `columnOrderIds` hoặc `cardOrderIds`.
+- Enum string cho board type và member role.
 
-Khuyen nghi: tra ca hai trong thoi gian dai.
+Cleanup cần verify bằng search:
 
-## Performance
+```bash
+rg "_id|columnOrderIds|cardOrderIds" ../FE src
+find src/modules -path "*mappers*" -type f
+```
 
-Can theo doi:
+## [ ] Performance
 
-- Board detail include columns/cards co cham khi board lon.
-- Issue list filters can index.
-- Search title/name co the can trigram index neu data lon.
+Cần theo dõi:
 
-Index nen co:
+- Board detail include columns/cards có chậm khi board lớn.
+- Issue list filters cần index.
+- Search title/name có thể cần trigram index nếu data lớn.
+
+Index nên có:
 
 ```txt
 cards(boardId, deletedAt)
@@ -126,50 +122,54 @@ issue_types(boardId, name)
 versions(boardId, name)
 ```
 
-## Observability
+## [ ] Observability
 
 - Log requestId cho error.
-- Log domain action quan trong:
+- Log domain action quan trọng:
   - create board
   - move card
   - delete column
-  - data migration apply
-- Khong log password/token raw.
+  - reset/seed dữ liệu dev
+- Không log password/token raw.
 
-## Security
+## [ ] Security
 
-Can verify:
+Cần verify:
 
 - Cookies `httpOnly`.
-- Production cookie `secure=true`, `sameSite=none` neu cross-domain.
-- CORS chi allow domain FE.
+- Production cookie `secure=true`, `sameSite=none` nếu cross-domain.
+- CORS chỉ allow domain FE.
 - Rate limit auth endpoints.
 - ValidationPipe whitelist.
-- Khong expose `password`, `verifyToken`, refresh token hash.
+- Không expose `password`, `verifyToken`, refresh token hash.
 
-## Documentation
+## [ ] Documentation
 
 Update:
 
 ```txt
 README.md
-docs/database-migration-plan.md
 docs/dbdiagram.dbml
 .env.example
 ```
 
-Can ghi:
+Cần ghi:
 
-- Cach chay local voi FE.
+- Cách chạy local với FE.
 - Endpoint status.
-- Env can thiet.
-- Data migration command.
-- Rollback data migration.
+- Env cần thiết.
+- Cách reset database dev.
+- Cách chạy seed dữ liệu dev nếu có.
 
-## Definition of done
+## Tiêu chí hoàn tất
 
 - Unit/e2e tests cover core flow.
-- Permission role theo board ro rang.
-- Khong con compatibility hack khong duoc document.
-- README va env example dung voi cach FE chay.
-- Co checklist release/cutover cho moi truong that.
+- Permission role theo board rõ ràng.
+- Không còn compatibility hack không được document.
+- README và env example đúng với cách FE chạy.
+- Có checklist release/verification cho môi trường thật.
+
+## Progress Summary
+
+- **Tasks Completed:** 1/9
+- **Status:** In Progress

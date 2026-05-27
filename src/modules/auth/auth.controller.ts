@@ -16,10 +16,24 @@ import { RateLimit } from '@common/decorators/rate-limit.decorator';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { VerifyAccountDto } from '@modules/users/dto/verify-account.dto';
 import { AuthService } from './auth.service';
+import {
+  ApiAuthControllerDocs,
+  ApiCurrentUserDocs,
+  ApiLoginDocs,
+  ApiLogoutDocs,
+  ApiRefreshTokenDocs,
+  ApiRegisterDocs,
+  ApiVerifyAccountDocs,
+} from './decorators/auth-swagger.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 const COOKIE_MAX_AGE = 14 * 24 * 60 * 60 * 1000;
+
+type AuthTokenPair = {
+  accessToken: string;
+  refreshToken: string;
+};
 
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -32,10 +46,12 @@ const getCookieOptions = () => {
   };
 };
 
+@ApiAuthControllerDocs()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiRegisterDocs()
   @Public()
   @RateLimit(5)
   @HttpCode(HttpStatus.CREATED)
@@ -44,6 +60,7 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @ApiLoginDocs()
   @Public()
   @RateLimit(5)
   @HttpCode(HttpStatus.OK)
@@ -53,14 +70,13 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.login(dto);
-    const cookieOptions = getCookieOptions();
 
-    response.cookie('accessToken', result.accessToken, cookieOptions);
-    response.cookie('refreshToken', result.refreshToken, cookieOptions);
+    this.setAuthCookies(response, result);
 
     return result;
   }
 
+  @ApiVerifyAccountDocs()
   @Public()
   @RateLimit(5)
   @HttpCode(HttpStatus.OK)
@@ -69,6 +85,7 @@ export class AuthController {
     return this.authService.verifyAccount(dto);
   }
 
+  @ApiLogoutDocs()
   @Public()
   @HttpCode(HttpStatus.OK)
   @Delete('logout')
@@ -81,14 +98,13 @@ export class AuthController {
         ? request.cookies.refreshToken
         : undefined;
     await this.authService.logout(refreshToken);
-    const cookieOptions = getCookieOptions();
 
-    response.clearCookie('accessToken', cookieOptions);
-    response.clearCookie('refreshToken', cookieOptions);
+    this.clearAuthCookies(response);
 
     return { message: 'Logged out successfully' };
   }
 
+  @ApiRefreshTokenDocs()
   @Public()
   @RateLimit(10)
   @Get('refresh_token')
@@ -101,16 +117,29 @@ export class AuthController {
         ? request.cookies.refreshToken
         : undefined;
     const result = await this.authService.refreshToken(refreshToken);
-    const cookieOptions = getCookieOptions();
 
-    response.cookie('accessToken', result.accessToken, cookieOptions);
-    response.cookie('refreshToken', result.refreshToken, cookieOptions);
+    this.setAuthCookies(response, result);
 
     return result;
   }
 
+  @ApiCurrentUserDocs()
   @Get('me')
   me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user);
+  }
+
+  private setAuthCookies(response: Response, tokens: AuthTokenPair) {
+    const cookieOptions = getCookieOptions();
+
+    response.cookie('accessToken', tokens.accessToken, cookieOptions);
+    response.cookie('refreshToken', tokens.refreshToken, cookieOptions);
+  }
+
+  private clearAuthCookies(response: Response) {
+    const cookieOptions = getCookieOptions();
+
+    response.clearCookie('accessToken', cookieOptions);
+    response.clearCookie('refreshToken', cookieOptions);
   }
 }
