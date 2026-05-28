@@ -85,6 +85,14 @@ export class BoardsService {
     return this.toBoardResponse(board, cards);
   }
 
+  async findByCode(code: string) {
+    return this.boardsRepository.findByCode(code);
+  }
+
+  async findById(id: number) {
+    return this.boardsRepository.findBoardById(id);
+  }
+
   async update(
     user: JwtPayload,
     boardId: number,
@@ -96,7 +104,7 @@ export class BoardsService {
       boardManagerRoles,
     );
 
-    const existingBoard = await this.boardsRepository.findActiveById(boardId);
+    const existingBoard = await this.boardsRepository.findBoardById(boardId);
 
     if (!existingBoard) {
       throw new NotFoundException('Board not found');

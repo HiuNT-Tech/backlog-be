@@ -46,24 +46,17 @@ export class UsersService {
   async findAll(
     query: PaginationQueryDto,
   ): Promise<PaginatedResponse<UserResponseDto>> {
-    const page = query.page;
-    const limit = query.limit;
-    const skip = (page - 1) * limit;
     const sortBy = this.normalizeSortBy(query.sortBy);
-
-    const [users, total] = await Promise.all([
-      this.usersRepository.findManyUsers({
-        skip,
-        take: limit,
-        sortBy,
-        sortOrder: query.sortOrder,
-      }),
-      this.usersRepository.countActiveUsers(),
-    ]);
+    const result = await this.usersRepository.findPaginatedUsers({
+      page: query.page,
+      limit: query.limit,
+      sortBy,
+      sortOrder: query.sortOrder,
+    });
 
     return {
-      items: users.map((user) => this.toResponse(user)),
-      total,
+      items: result.items.map((user) => this.toResponse(user)),
+      total: result.total,
     };
   }
 

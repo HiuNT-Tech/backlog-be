@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PaginatedResponse } from '@common/dto/response.dto';
 import { Role } from '@common/enums/role.enum';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { BasePrismaRepository } from '@database/prisma/repositories';
+import { toPaginatedResponse } from '@common/utils/pagination.util';
 import { UserEntity } from '../entities/user.entity';
 
-type FindManyUsersParams = {
-  skip: number;
-  take: number;
+type FindPaginatedUsersParams = {
+  page: number;
+  limit: number;
   sortBy: keyof Pick<
     UserEntity,
     'createdAt' | 'updatedAt' | 'email' | 'displayName'
@@ -48,19 +50,22 @@ export class UsersRepository extends BasePrismaRepository<
     super(prisma.user);
   }
 
-  async findManyUsers(params: FindManyUsersParams): Promise<UserEntity[]> {
-    const users = await this.delegate.findMany({
-      where: ACTIVE_FILTER,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { [params.sortBy]: params.sortOrder },
+  async findPaginatedUsers(
+    params: FindPaginatedUsersParams,
+  ): Promise<PaginatedResponse<UserEntity>> {
+    const result = await this.paginate({
+      page: params.page,
+      limit: params.limit,
+      args: {
+        where: ACTIVE_FILTER,
+        orderBy: { [params.sortBy]: params.sortOrder },
+      },
     });
 
-    return users.map((user) => this.toEntity(user));
-  }
-
-  countActiveUsers(): Promise<number> {
-    return this.delegate.count({ where: ACTIVE_FILTER });
+    return toPaginatedResponse(
+      result.items.map((user) => this.toEntity(user)),
+      result.total,
+    );
   }
 
   async findById(id: number): Promise<UserEntity | null> {

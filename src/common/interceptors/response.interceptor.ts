@@ -6,12 +6,18 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ItemResponse, PaginatedResponse } from '@common/dto/response.dto';
+import {
+  CountedResponse,
+  ItemResponse,
+  PaginatedResponse,
+} from '@common/dto/response.dto';
 
 type ApiResponse<T> =
   T extends PaginatedResponse<infer TItem>
     ? PaginatedResponse<TItem>
-    : ItemResponse<T>;
+    : T extends CountedResponse<infer TItem>
+      ? CountedResponse<TItem>
+      : ItemResponse<T>;
 
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<
@@ -30,6 +36,10 @@ export class ResponseInterceptor<T> implements NestInterceptor<
       return data as ApiResponse<T>;
     }
 
+    if (this.isCountedResponse(data)) {
+      return data as ApiResponse<T>;
+    }
+
     return {
       item: data,
     } as ApiResponse<T>;
@@ -44,5 +54,14 @@ export class ResponseInterceptor<T> implements NestInterceptor<
 
     const response = value as Record<string, unknown>;
     return Array.isArray(response.items) && typeof response.total === 'number';
+  }
+
+  private isCountedResponse(value: unknown): value is CountedResponse<unknown> {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    const response = value as Record<string, unknown>;
+    return Array.isArray(response.items) && typeof response.count === 'number';
   }
 }

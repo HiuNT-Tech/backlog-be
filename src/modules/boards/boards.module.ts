@@ -7,6 +7,6 @@ import { BoardsRepository } from './repositories/boards.repository';
 @Module({
   controllers: [BoardsController],
   providers: [BoardsService, BoardsRepository, BoardAccessService],
-  exports: [BoardAccessService],
+  exports: [BoardsService, BoardAccessService],
 })
 export class BoardsModule {}

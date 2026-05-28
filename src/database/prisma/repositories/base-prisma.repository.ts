@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { PaginatedResponse } from '@common/dto/response.dto';
+import {
+  getPagePagination,
+  toPaginatedResponse,
+} from '@common/utils/pagination.util';
 
 type RequiredOperation<TArgs, TResult> = (args: TArgs) => PromiseLike<TResult>;
 
@@ -128,13 +132,11 @@ export abstract class BasePrismaRepository<TDelegate> {
   ): Promise<
     PaginatedResponse<ArrayItem<Prisma.Result<TDelegate, TArgs, 'findMany'>>>
   > {
-    const page = Math.max(params.page, 1);
-    const limit = Math.max(params.limit, 1);
-    const skip = (page - 1) * limit;
+    const { skip, take } = getPagePagination(params);
     const findManyArgs = {
       ...(params.args ?? {}),
       skip,
-      take: limit,
+      take,
     } as TArgs;
     const countArgs = this.toCountArgs(params.args);
 
@@ -143,10 +145,10 @@ export abstract class BasePrismaRepository<TDelegate> {
       this.count(countArgs),
     ]);
 
-    return {
-      items: items as ArrayItem<Prisma.Result<TDelegate, TArgs, 'findMany'>>[],
-      total: Number(total),
-    };
+    return toPaginatedResponse(
+      items as ArrayItem<Prisma.Result<TDelegate, TArgs, 'findMany'>>[],
+      Number(total),
+    );
   }
 
   create<TArgs extends Prisma.Args<TDelegate, 'create'>>(

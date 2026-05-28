@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { BoardMemberRole, Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
+import {
+  getOffsetPagination,
+  toPaginatedResponse,
+} from '@common/utils/pagination.util';
 import { CreateBoardDto, GetBoardUsersQueryDto } from '../dto/board.dto';
 
 const boardBaseSelect = {
@@ -85,7 +89,7 @@ const defaultColumns = [
 export class BoardsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findActiveById(id: number) {
+  findBoardById(id: number) {
     return this.prisma.board.findFirst({
       where: { id, deletedAt: null },
       select: boardBaseSelect,
@@ -235,12 +239,13 @@ export class BoardsRepository {
         : { user: { deletedAt: null } }),
     };
 
+    const { skip, take } = getOffsetPagination(query);
     const [total, items] = await this.prisma.$transaction([
       this.prisma.boardMember.count({ where }),
       this.prisma.boardMember.findMany({
         where,
-        skip: query.skip,
-        take: query.limit,
+        skip,
+        take,
         orderBy: { createdAt: 'asc' },
         select: {
           role: true,
@@ -258,6 +263,6 @@ export class BoardsRepository {
       }),
     ]);
 
-    return { total, items };
+    return toPaginatedResponse(items, total);
   }
 }
