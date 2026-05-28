@@ -47,7 +47,7 @@ Không tạo `mappers/` legacy.
 
 ## Issue types
 
-### [ ] GET /v1/boards/:id/issue-types
+### [x] GET /v1/boards/:id/issue-types
 
 Query FE:
 
@@ -86,7 +86,7 @@ Logic:
 
 Lưu ý: FE version/issue-type hooks đang đọc `count`, không phải `total`.
 
-### [ ] POST /v1/boards/:id/issue-types
+### [x] POST /v1/boards/:id/issue-types
 
 Payload:
 
@@ -106,7 +106,7 @@ Logic:
 - Unique name theo board.
 - Return item.
 
-### [ ] PUT /v1/boards/:id/issue-types/:issueTypeId
+### [x] PUT /v1/boards/:id/issue-types/:issueTypeId
 
 Payload:
 
@@ -125,7 +125,7 @@ Logic:
 - Nếu đổi name, check unique trong board.
 - Return item.
 
-### [ ] DELETE /v1/boards/:id/issue-types/:issueTypeId
+### [x] DELETE /v1/boards/:id/issue-types/:issueTypeId
 
 Với DB mới có FK:
 
@@ -140,7 +140,7 @@ Response:
 
 ## Versions
 
-### [ ] GET /v1/boards/:id/versions
+### [x] GET /v1/boards/:id/versions
 
 Query FE:
 
@@ -177,7 +177,7 @@ Logic:
 }
 ```
 
-### [ ] POST /v1/boards/:id/versions
+### [x] POST /v1/boards/:id/versions
 
 Payload:
 
@@ -199,7 +199,7 @@ Logic:
 - `startDate <= endDate` nếu cả hai có giá trị.
 - Return item.
 
-### [ ] GET /v1/boards/:id/versions/:versionId
+### [x] GET /v1/boards/:id/versions/:versionId
 
 Logic:
 
@@ -208,7 +208,7 @@ Logic:
 - Check board member.
 - Return item.
 
-### [ ] PUT /v1/boards/:id/versions/:versionId
+### [x] PUT /v1/boards/:id/versions/:versionId
 
 Logic:
 
@@ -217,7 +217,7 @@ Logic:
 - Update allowed fields: name, startDate, endDate, description.
 - Return item.
 
-### [ ] DELETE /v1/boards/:id/versions/:versionId
+### [x] DELETE /v1/boards/:id/versions/:versionId
 
 Để giữ behavior khi xóa version:
 
@@ -243,5 +243,5 @@ Logic:
 
 ## Progress Summary
 
-- **Tasks Completed:** 0/9
-- **Status:** Not Started
+- **Tasks Completed:** 9/9
+- **Status:** Completed
