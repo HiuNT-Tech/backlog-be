@@ -273,29 +273,29 @@ export class MoveCardDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  boardId: number;
+  currentCardId: number;
 
   @ApiProperty({ example: 1 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  cardId: number;
-
-  @ApiProperty({ example: 1 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  fromColumnId: number;
-
-  @ApiProperty({ example: 2 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  toColumnId: number;
+  prevColumnId: number;
 
   @ApiProperty({ type: [MoveCardItemDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MoveCardItemDto)
-  cards: MoveCardItemDto[];
+  prevCards: MoveCardItemDto[];
+
+  @ApiProperty({ example: 2 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  nextColumnId: number;
+
+  @ApiProperty({ type: [MoveCardItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MoveCardItemDto)
+  nextCards: MoveCardItemDto[];
 }

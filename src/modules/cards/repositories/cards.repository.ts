@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
-import { CreateCardDto } from '../dto/card.dto';
+import {
+  CreateCardDto,
+  ListBoardCardsQueryDto,
+  MoveCardDto,
+  MoveCardItemDto,
+  UpdateCardDto,
+} from '../dto/card.dto';
 
 export const cardUserSelect = {
   id: true,
@@ -80,11 +86,37 @@ export class CardsRepository {
     });
   }
 
+  findActiveColumnWithBoard(columnId: number) {
+    return this.prisma.column.findFirst({
+      where: { id: columnId, deletedAt: null },
+      select: { id: true, boardId: true },
+    });
+  }
+
   findActiveById(id: number) {
     return this.prisma.card.findFirst({
       where: { id, deletedAt: null },
       select: cardDetailSelect,
     });
+  }
+
+  async findByBoard(boardId: number, query: ListBoardCardsQueryDto) {
+    const where = this.buildBoardCardsWhere(boardId, query);
+    const skip = Math.max(query.skip ?? 0, 0);
+    const take = Math.max(query.limit ?? 10, 1);
+
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.card.count({ where }),
+      this.prisma.card.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        select: cardDetailSelect,
+      }),
+    ]);
+
+    return { total, items };
   }
 
   async create(dto: CreateCardDto, userId: number) {
@@ -133,6 +165,170 @@ export class CardsRepository {
     });
 
     return card;
+  }
+
+  async update(cardId: number, dto: UpdateCardDto, columnChanged: boolean) {
+    const card = await this.prisma.$transaction(async (tx) => {
+      const nextPosition =
+        columnChanged && dto.columnId !== undefined
+          ? await this.getNextPosition(tx, dto.columnId)
+          : undefined;
+
+      return tx.card.update({
+        where: { id: cardId },
+        data: {
+          ...(dto.title !== undefined ? { title: dto.title } : {}),
+          ...(dto.description !== undefined
+            ? { description: dto.description }
+            : {}),
+          ...(dto.columnId !== undefined ? { columnId: dto.columnId } : {}),
+          ...(nextPosition !== undefined ? { position: nextPosition } : {}),
+          ...(dto.priorityId !== undefined
+            ? { priorityId: dto.priorityId }
+            : {}),
+          ...(dto.assigneeUserId !== undefined
+            ? { assigneeUserId: dto.assigneeUserId }
+            : {}),
+          ...(dto.issueTypeId !== undefined
+            ? { issueTypeId: dto.issueTypeId }
+            : {}),
+          ...(dto.versionId !== undefined ? { versionId: dto.versionId } : {}),
+          ...(dto.startDate !== undefined
+            ? { startDate: this.toDate(dto.startDate) }
+            : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: this.toDate(dto.dueDate) }
+            : {}),
+          ...(dto.estimatedHours !== undefined
+            ? { estimatedHours: dto.estimatedHours }
+            : {}),
+          ...(dto.actualHours !== undefined
+            ? { actualHours: dto.actualHours }
+            : {}),
+        },
+        select: cardDetailSelect,
+      });
+    });
+
+    return card;
+  }
+
+  countCardsInColumn(columnId: number, cardIds: number[]) {
+    if (cardIds.length === 0) {
+      return 0;
+    }
+
+    return this.prisma.card.count({
+      where: {
+        id: { in: cardIds },
+        columnId,
+        deletedAt: null,
+      },
+    });
+  }
+
+  countNextColumnCardsForMove(
+    boardId: number,
+    currentCardId: number,
+    nextColumnId: number,
+    cardIds: number[],
+  ) {
+    if (cardIds.length === 0) {
+      return 0;
+    }
+
+    return this.prisma.card.count({
+      where: {
+        id: { in: cardIds },
+        boardId,
+        deletedAt: null,
+        OR: [{ columnId: nextColumnId }, { id: currentCardId }],
+      },
+    });
+  }
+
+  async move(dto: MoveCardDto) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.card.update({
+        where: { id: dto.currentCardId },
+        data: { columnId: dto.nextColumnId },
+      });
+
+      await this.updateCardPositions(tx, dto.prevCards, dto.prevColumnId);
+      await this.updateCardPositions(tx, dto.nextCards, dto.nextColumnId);
+    });
+  }
+
+  private buildBoardCardsWhere(
+    boardId: number,
+    query: ListBoardCardsQueryDto,
+  ): Prisma.CardWhereInput {
+    return {
+      boardId,
+      deletedAt: null,
+      ...(query.search
+        ? {
+            OR: [
+              { title: { contains: query.search, mode: 'insensitive' } },
+              { cardCode: { contains: query.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(query.cardCode
+        ? { cardCode: { startsWith: query.cardCode, mode: 'insensitive' } }
+        : {}),
+      ...this.inFilter('priorityId', query.priorityId),
+      ...this.inFilter('issueTypeId', query.issueTypeId),
+      ...this.inFilter('columnId', query.columnId),
+      ...this.inFilter('assigneeUserId', query.assigneeUserId),
+      ...this.inFilter('registeredByUserId', query.registeredByUserId),
+      ...this.inFilter('versionId', query.versionId),
+      ...(query.startDate
+        ? { startDate: { gte: this.toDate(query.startDate) } }
+        : {}),
+      ...(query.dueDate
+        ? { dueDate: { lte: this.toDate(query.dueDate) } }
+        : {}),
+    };
+  }
+
+  private inFilter<TField extends keyof Prisma.CardWhereInput>(
+    field: TField,
+    values: number[] | undefined,
+  ): Prisma.CardWhereInput {
+    return values && values.length > 0 ? { [field]: { in: values } } : {};
+  }
+
+  private async getNextPosition(
+    tx: Prisma.TransactionClient,
+    columnId: number,
+  ): Promise<number> {
+    const lastCard = await tx.card.findFirst({
+      where: {
+        columnId,
+        deletedAt: null,
+      },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+
+    return lastCard ? lastCard.position + 1 : 0;
+  }
+
+  private async updateCardPositions(
+    tx: Prisma.TransactionClient,
+    cards: MoveCardItemDto[],
+    columnId: number,
+  ): Promise<void> {
+    for (const card of cards) {
+      await tx.card.update({
+        where: { id: card.id },
+        data: {
+          columnId,
+          position: card.position,
+        },
+      });
+    }
   }
 
   private toDate(value: string | undefined): Date | undefined {

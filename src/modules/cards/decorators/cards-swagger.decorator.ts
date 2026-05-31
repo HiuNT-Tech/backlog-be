@@ -14,7 +14,11 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
-import { BoardCardsResponseDto, CardResponseDto } from '../dto/card-response.dto';
+import {
+  BoardCardsResponseDto,
+  CardResponseDto,
+  MoveCardResponseDto,
+} from '../dto/card-response.dto';
 
 const authDocs = [
   ApiCookieAuth('accessToken'),
@@ -48,6 +52,10 @@ export function ApiCreateCardDocs() {
     }),
     ApiForbiddenResponse({
       description: 'Current user is not a board member.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotFoundResponse({
+      description: 'Board column, issue type, or version not found.',
       type: ApiErrorResponseDto,
     }),
   );
@@ -127,7 +135,10 @@ export function ApiMoveCardDocs() {
       description: 'Move a card between board columns and update positions.',
     }),
     ...authDocs,
-    ApiOkResponse({ description: 'Card moved.', type: CardResponseDto }),
+    ApiOkResponse({
+      description: 'Card moved.',
+      type: MoveCardResponseDto,
+    }),
     ApiBadRequestResponse({
       description: 'Invalid move payload.',
       type: ApiErrorResponseDto,
