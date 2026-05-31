@@ -27,7 +27,7 @@ src/modules/cards/
 
 Không tạo mapper legacy. Service/repository dùng Prisma relation và response DTO mỏng nếu cần lọc field.
 
-## [ ] POST /v1/cards
+## [x] POST /v1/cards
 
 Payload FE mới:
 
@@ -106,7 +106,7 @@ createdAt
 updatedAt
 ```
 
-## [ ] GET /v1/cards/:id
+## [x] GET /v1/cards/:id
 
 Logic:
 
@@ -143,7 +143,7 @@ Logic:
 }
 ```
 
-## [ ] PUT /v1/cards/:id
+## [x] PUT /v1/cards/:id
 
 Payload có thể gồm:
 
@@ -173,7 +173,7 @@ Logic:
 - Update trong transaction nếu đổi column/position.
 - Return card detail.
 
-## [ ] GET /v1/boards/:id/cards
+## [x] GET /v1/boards/:id/cards
 
 Query FE mới:
 
@@ -237,7 +237,7 @@ updatedAt
 position
 ```
 
-## [ ] PUT /v1/boards/supports/moving_card
+## [x] PUT /v1/boards/supports/moving_card
 
 Payload FE mới:
 
@@ -247,7 +247,10 @@ Payload FE mới:
   "prevColumnId": 1,
   "prevCards": [{ "id": 2, "position": 0 }],
   "nextColumnId": 2,
-  "nextCards": [{ "id": 3, "position": 0 }, { "id": 1, "position": 1 }]
+  "nextCards": [
+    { "id": 3, "position": 0 },
+    { "id": 1, "position": 1 }
+  ]
 }
 ```
 
@@ -291,5 +294,6 @@ Ghi chú:
 
 ## Progress Summary
 
-- **Tasks Completed:** 0/5
-- **Status:** Not Started
+- **Tasks Completed:** 5/5
+- **Status:** Backend implemented
+- **Verification:** `npm run build` passed; API docs checker passed.

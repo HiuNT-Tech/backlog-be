@@ -16,12 +16,21 @@ import {
   ListIssueTypesQueryDto,
   UpdateIssueTypeDto,
 } from './dto/issue-type.dto';
+import {
+  ApiCreateIssueTypeDocs,
+  ApiDeleteIssueTypeDocs,
+  ApiIssueTypesControllerDocs,
+  ApiListIssueTypesDocs,
+  ApiUpdateIssueTypeDocs,
+} from './decorators/issue-types-swagger.decorator';
 import { IssueTypesService } from './issue-types.service';
 
+@ApiIssueTypesControllerDocs()
 @Controller('boards/:id/issue-types')
 export class IssueTypesController {
   constructor(private readonly issueTypesService: IssueTypesService) {}
 
+  @ApiListIssueTypesDocs()
   @Get()
   findAll(
     @CurrentUser() user: JwtPayload,
@@ -31,6 +40,7 @@ export class IssueTypesController {
     return this.issueTypesService.findAll(user, boardId, query);
   }
 
+  @ApiCreateIssueTypeDocs()
   @Post()
   create(
     @CurrentUser() user: JwtPayload,
@@ -40,6 +50,7 @@ export class IssueTypesController {
     return this.issueTypesService.create(user, boardId, dto);
   }
 
+  @ApiUpdateIssueTypeDocs()
   @Put(':issueTypeId')
   update(
     @CurrentUser() user: JwtPayload,
@@ -50,6 +61,7 @@ export class IssueTypesController {
     return this.issueTypesService.update(user, boardId, issueTypeId, dto);
   }
 
+  @ApiDeleteIssueTypeDocs()
   @Delete(':issueTypeId')
   remove(
     @CurrentUser() user: JwtPayload,

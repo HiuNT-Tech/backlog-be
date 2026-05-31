@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotImplementedException,
   NotFoundException,
 } from '@nestjs/common';
 import { JwtPayload } from '@/types/jwt-payload.type';
@@ -22,6 +21,7 @@ import {
   CardResponseDto,
   CardUserResponseDto,
   CardVersionResponseDto,
+  MoveCardResponseDto,
 } from './dto/card-response.dto';
 import { CardsRepository } from './repositories/cards.repository';
 
@@ -65,46 +65,103 @@ export class CardsService {
     return this.toCardResponse(card);
   }
 
-  findOne(user: JwtPayload, id: number): Promise<CardResponseDto> {
-    void user;
-    void id;
-    throw new NotImplementedException(
-      'GET /v1/cards/:id is not implemented yet',
-    );
+  async findOne(user: JwtPayload, id: number): Promise<CardResponseDto> {
+    const card = await this.ensureCardVisibleToUser(user, id);
+    return this.toCardResponse(card);
   }
 
-  update(
+  async update(
     user: JwtPayload,
     id: number,
     dto: UpdateCardDto,
   ): Promise<CardResponseDto> {
-    void user;
-    void id;
-    void dto;
-    throw new NotImplementedException(
-      'PUT /v1/cards/:id is not implemented yet',
+    const card = await this.ensureCardVisibleToUser(user, id);
+    const nextColumnId = dto.columnId ?? card.columnId;
+    await this.ensureColumnBelongsToBoard(card.boardId, nextColumnId);
+    this.ensureDateRangeValid(
+      dto.startDate ?? this.toDateInput(card.startDate),
+      dto.dueDate ?? this.toDateInput(card.dueDate),
     );
+
+    if (dto.assigneeUserId !== undefined) {
+      await this.ensureAssigneeBelongsToBoard(card.boardId, dto.assigneeUserId);
+    }
+
+    if (dto.issueTypeId !== undefined) {
+      await this.issueTypesService.ensureBelongsToBoard(
+        card.boardId,
+        dto.issueTypeId,
+      );
+    }
+
+    if (dto.versionId !== undefined) {
+      await this.versionsService.ensureBelongsToBoard(
+        card.boardId,
+        dto.versionId,
+      );
+    }
+
+    const updated = await this.cardsRepository.update(
+      id,
+      dto,
+      nextColumnId !== card.columnId,
+    );
+
+    return this.toCardResponse(updated);
   }
 
-  findByBoard(
+  async findByBoard(
     user: JwtPayload,
     boardId: number,
     query: ListBoardCardsQueryDto,
   ): Promise<BoardCardsResponseDto> {
-    void user;
-    void boardId;
-    void query;
-    throw new NotImplementedException(
-      'GET /v1/boards/:id/cards is not implemented yet',
-    );
+    await this.boardAccessService.ensureMember(boardId, user.userId);
+    const result = await this.cardsRepository.findByBoard(boardId, query);
+
+    return {
+      total: result.total,
+      items: result.items.map((card) => this.toCardResponse(card)),
+    };
   }
 
-  move(user: JwtPayload, dto: MoveCardDto): Promise<CardResponseDto> {
-    void user;
-    void dto;
-    throw new NotImplementedException(
-      'PUT /v1/boards/supports/moving_card is not implemented yet',
-    );
+  async move(user: JwtPayload, dto: MoveCardDto): Promise<MoveCardResponseDto> {
+    const card = await this.ensureCardVisibleToUser(user, dto.currentCardId);
+    const [prevColumn, nextColumn] = await Promise.all([
+      this.cardsRepository.findActiveColumnWithBoard(dto.prevColumnId),
+      this.cardsRepository.findActiveColumnWithBoard(dto.nextColumnId),
+    ]);
+
+    if (!prevColumn || prevColumn.boardId !== card.boardId) {
+      throw new NotFoundException('Previous column not found');
+    }
+
+    if (!nextColumn || nextColumn.boardId !== card.boardId) {
+      throw new NotFoundException('Next column not found');
+    }
+
+    if (card.columnId !== dto.prevColumnId) {
+      throw new BadRequestException('Current card is not in previous column');
+    }
+
+    await this.ensureMoveCardsBelongToColumns(card.boardId, dto);
+    await this.cardsRepository.move(dto);
+
+    return { updateResult: 'Successfully!' };
+  }
+
+  private async ensureCardVisibleToUser(
+    user: JwtPayload,
+    cardId: number,
+  ): Promise<CardRecord> {
+    const card = await this.cardsRepository.findActiveById(cardId);
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    await this.boardAccessService.ensureMember(card.boardId, user.userId);
+
+    return card;
   }
 
   private async ensureColumnBelongsToBoard(
@@ -148,6 +205,60 @@ export class CardsService {
         'startDate must be before or equal dueDate',
       );
     }
+  }
+
+  private async ensureMoveCardsBelongToColumns(
+    boardId: number,
+    dto: MoveCardDto,
+  ): Promise<void> {
+    const prevCardIds = dto.prevCards.map((card) => card.id);
+    const nextCardIds = dto.nextCards.map((card) => card.id);
+
+    if (!nextCardIds.includes(dto.currentCardId)) {
+      throw new BadRequestException('nextCards must include currentCardId');
+    }
+
+    if (prevCardIds.includes(dto.currentCardId)) {
+      throw new BadRequestException('prevCards must not include currentCardId');
+    }
+
+    const uniquePrevCardIds = [...new Set(prevCardIds)];
+    const uniqueNextCardIds = [...new Set(nextCardIds)];
+
+    if (
+      uniquePrevCardIds.length !== prevCardIds.length ||
+      uniqueNextCardIds.length !== nextCardIds.length
+    ) {
+      throw new BadRequestException('Move card payload contains duplicate ids');
+    }
+
+    const [prevCount, nextCount] = await Promise.all([
+      this.cardsRepository.countCardsInColumn(dto.prevColumnId, prevCardIds),
+      this.cardsRepository.countNextColumnCardsForMove(
+        boardId,
+        dto.currentCardId,
+        dto.nextColumnId,
+        nextCardIds,
+      ),
+    ]);
+
+    if (prevCount !== prevCardIds.length) {
+      throw new BadRequestException(
+        'All previous cards must belong to previous column',
+      );
+    }
+
+    if (nextCount !== nextCardIds.length) {
+      throw new BadRequestException(
+        'All next cards must belong to next column or be the current card',
+      );
+    }
+  }
+
+  private toDateInput(date: Date | null | undefined): string | undefined {
+    return date === null || date === undefined
+      ? undefined
+      : date.toISOString().slice(0, 10);
   }
 
   private toCardResponse(card: CardRecord): CardResponseDto {

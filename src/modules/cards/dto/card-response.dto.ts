@@ -140,3 +140,8 @@ export class BoardCardsResponseDto {
   @ApiProperty({ type: [CardResponseDto] })
   items: CardResponseDto[];
 }
+
+export class MoveCardResponseDto {
+  @ApiProperty({ example: 'Successfully!' })
+  updateResult: string;
+}
