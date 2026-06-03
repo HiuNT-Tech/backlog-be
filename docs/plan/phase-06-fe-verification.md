@@ -23,13 +23,13 @@ FE: NEXT_PUBLIC_API_URL hoặc API_ROOT trỏ http://localhost:8017
 
 ## Smoke test API
 
-### [ ] Status
+### [x] Status
 
 ```bash
 curl http://localhost:8017/v1/status
 ```
 
-### [ ] Auth
+### [x] Auth
 
 ```txt
 POST /v1/auth/login
@@ -45,7 +45,7 @@ Cần verify:
 - Token expired trả `410`.
 - Refresh token retry trên FE thành công.
 
-### [ ] Domain
+### [x] Domain
 
 ```txt
 GET /v1/boards
@@ -59,7 +59,7 @@ GET /v1/boards/:id/versions
 
 ## FE verification matrix
 
-### [ ] Auth pages
+### [x] Auth pages
 
 | Page | Việc cần test |
 | --- | --- |
@@ -68,7 +68,7 @@ GET /v1/boards/:id/versions
 | `/login` | Login thành công, cookie set, vào dashboard. |
 | Logout | Clear cookie và về login. |
 
-### [ ] Dashboard
+### [x] Dashboard
 
 | Flow | Expected |
 | --- | --- |
@@ -76,7 +76,7 @@ GET /v1/boards/:id/versions
 | Create board | Board mới có 4 default statuses. |
 | Click board | Vào board detail, columns/cards render đúng. |
 
-### [ ] Board page
+### [x] Board page
 
 | Flow | Expected |
 | --- | --- |
@@ -87,7 +87,7 @@ GET /v1/boards/:id/versions
 | Drag card other column | Card đổi status đúng sau reload. |
 | Drag column | Column order đúng sau reload. |
 
-### [ ] Issues
+### [x] Issues
 
 | Flow | Expected |
 | --- | --- |
@@ -98,7 +98,7 @@ GET /v1/boards/:id/versions
 | Edit issue | Update description/metadata thành công. |
 | Issue detail | Assignee, column/status, version, issueType hiển thị đúng. |
 
-### [ ] Settings
+### [x] Settings
 
 | Tab | Expected |
 | --- | --- |
@@ -145,5 +145,5 @@ Nếu dữ liệu dev sai hoặc schema thay đổi lớn:
 
 ## Progress Summary
 
-- **Tasks Completed:** 0/8
-- **Status:** Not Started
+- **Tasks Completed:** 8/8
+- **Status:** Completed

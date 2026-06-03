@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { StatusColor } from '@common/types';
 import {
   ArrayMinSize,
   IsArray,
@@ -10,23 +11,29 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ListColumnsQueryDto {
-  @ApiProperty({ example: 1 })
+
+  @ApiPropertyOptional({ example: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  skip?: number = 0;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  boardId: number;
+  @Max(100)
+  limit?: number = 10;
 }
 
 export class CreateColumnDto {
-  @ApiProperty({ example: 1 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  boardId: number;
 
   @ApiProperty({ example: 'Review', minLength: 2, maxLength: 50 })
   @IsString()
@@ -34,12 +41,9 @@ export class CreateColumnDto {
   @MaxLength(50)
   title: string;
 
-  @ApiProperty({ example: 7, minimum: 1, maximum: 10 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(10)
-  statusColor: number;
+  @ApiProperty({ enum: StatusColor, example: StatusColor.BLUE })
+  @IsEnum(StatusColor)
+  statusColor: StatusColor;
 }
 
 export class ReorderCardDto {
@@ -64,13 +68,10 @@ export class UpdateColumnDto {
   @MaxLength(50)
   title?: string;
 
-  @ApiPropertyOptional({ example: 4, minimum: 1, maximum: 10 })
+  @ApiPropertyOptional({ enum: StatusColor, example: StatusColor.BLUE })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(10)
-  statusColor?: number;
+  @IsEnum(StatusColor)
+  statusColor?: StatusColor;
 
   @ApiPropertyOptional({ type: [ReorderCardDto] })
   @IsOptional()

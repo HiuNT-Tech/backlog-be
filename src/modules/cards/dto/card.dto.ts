@@ -10,6 +10,7 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -85,15 +86,15 @@ export class CreateCardDto {
   @IsDateString()
   dueDate?: string;
 
-  @ApiPropertyOptional({ example: '4' })
+  @ApiPropertyOptional({ example: '4.5' })
   @IsOptional()
-  @IsString()
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
   @MaxLength(32)
   estimatedHours?: string;
 
-  @ApiPropertyOptional({ example: '2' })
+  @ApiPropertyOptional({ example: '2.5' })
   @IsOptional()
-  @IsString()
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
   @MaxLength(32)
   actualHours?: string;
 }
@@ -157,15 +158,15 @@ export class UpdateCardDto {
   @IsDateString()
   dueDate?: string;
 
-  @ApiPropertyOptional({ example: '5' })
+  @ApiPropertyOptional({ example: '5.5' })
   @IsOptional()
-  @IsString()
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
   @MaxLength(32)
   estimatedHours?: string;
 
-  @ApiPropertyOptional({ example: '3' })
+  @ApiPropertyOptional({ example: '3.5' })
   @IsOptional()
-  @IsString()
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
   @MaxLength(32)
   actualHours?: string;
 }

@@ -17,7 +17,7 @@ Phase này không chuyển dữ liệu từ backend cũ. Dự án đang trong gi
 
 ## Việc cần làm
 
-### [ ] 1. Chuẩn hóa database dev
+### [x] 1. Chuẩn hóa database dev
 
 Chọn một cách chạy nhất quán cho môi trường dev:
 
@@ -34,7 +34,7 @@ npx prisma migrate reset
 
 Chỉ dùng reset cho database local/dev. Không dùng cho môi trường có dữ liệu thật.
 
-### [ ] 2. Tạo seed tối thiểu
+### [x] 2. Tạo seed tối thiểu
 
 Seed đề xuất:
 
@@ -68,7 +68,7 @@ Chạy seed bằng:
 npm run db:seed
 ```
 
-### [ ] 3. Dữ liệu mặc định khi tạo board
+### [x] 3. Dữ liệu mặc định khi tạo board
 
 Ngay cả khi không chạy seed, API `POST /v1/boards` vẫn phải tự tạo 4 columns mặc định:
 
@@ -81,7 +81,7 @@ Closed      statusColor 4 position 3
 
 Đây là behavior runtime, không phụ thuộc seed.
 
-### [ ] 4. Smoke test dữ liệu dev
+### [x] 4. Smoke test dữ liệu dev
 
 Sau khi chạy Prisma migration/reset/seed, kiểm tra:
 
@@ -103,7 +103,7 @@ Kỳ vọng:
 - Issue list trả `{ total, items }`.
 - Issue type/version list trả `{ items, count }`.
 
-### [ ] 5. Tài liệu hóa cách reset
+### [x] 5. Tài liệu hóa cách reset
 
 README hoặc docs vận hành dev cần ghi:
 
@@ -138,5 +138,5 @@ Vì không có dữ liệu thật, không cần script khôi phục dữ liệu 
 
 ## Progress Summary
 
-- **Tasks Completed:** 0/5
-- **Status:** Not Started
+- **Tasks Completed:** 5/5
+- **Status:** Completed

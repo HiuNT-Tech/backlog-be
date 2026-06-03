@@ -41,9 +41,9 @@ export class ColumnsRepository {
     });
   }
 
-  async create(dto: CreateColumnDto) {
+  async create(boardId: number, dto: CreateColumnDto) {
     const lastColumn = await this.prisma.column.findFirst({
-      where: { boardId: dto.boardId, deletedAt: null },
+      where: { boardId, deletedAt: null },
       orderBy: { position: 'desc' },
       select: { position: true },
     });
@@ -52,7 +52,7 @@ export class ColumnsRepository {
 
     return this.prisma.column.create({
       data: {
-        boardId: dto.boardId,
+        boardId,
         title: dto.title,
         statusColor: dto.statusColor,
         position,

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { StatusColor } from '@common/types';
 
 export class IssueTypeResponseDto {
   @ApiProperty({ example: 1 })
@@ -11,7 +12,7 @@ export class IssueTypeResponseDto {
   name: string;
 
   @ApiProperty({ example: 1 })
-  statusColor: number;
+  statusColor: StatusColor;
 
   @ApiProperty({ example: 2 })
   issueCount: number;

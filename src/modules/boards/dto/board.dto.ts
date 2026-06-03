@@ -64,9 +64,9 @@ export class CreateBoardDto {
   @IsString()
   @MinLength(2)
   @MaxLength(16)
-  @Matches(/^[A-Z0-9_]+$/, {
+  @Matches(/^[A-Z0-9_-]+$/, {
     message:
-      'boardCode must contain only uppercase letters, numbers, and underscores',
+      'boardCode must contain only uppercase letters, numbers, underscores, and hyphens',
   })
   boardCode: string;
 

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { StatusColor } from '@common/types';
 
 export class ColumnCardCountDto {
   @ApiProperty({ example: 3 })
@@ -16,7 +17,7 @@ export class ColumnResponseDto {
   title: string;
 
   @ApiProperty({ example: 7 })
-  statusColor: number;
+  statusColor: StatusColor;
 
   @ApiProperty({ example: 0 })
   position: number;
