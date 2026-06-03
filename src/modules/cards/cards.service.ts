@@ -43,18 +43,18 @@ export class CardsService {
     await this.ensureColumnBelongsToBoard(dto.boardId, dto.columnId);
     this.ensureDateRangeValid(dto.startDate, dto.dueDate);
 
-    if (dto.assigneeUserId !== undefined) {
+    if (dto.assigneeUserId !== undefined && dto.assigneeUserId !== null) {
       await this.ensureAssigneeBelongsToBoard(dto.boardId, dto.assigneeUserId);
     }
 
-    if (dto.issueTypeId !== undefined) {
+    if (dto.issueTypeId !== undefined && dto.issueTypeId !== null) {
       await this.issueTypesService.ensureBelongsToBoard(
         dto.boardId,
         dto.issueTypeId,
       );
     }
 
-    if (dto.versionId !== undefined) {
+    if (dto.versionId !== undefined && dto.versionId !== null) {
       await this.versionsService.ensureBelongsToBoard(
         dto.boardId,
         dto.versionId,
@@ -83,18 +83,18 @@ export class CardsService {
       dto.dueDate ?? this.toDateInput(card.dueDate),
     );
 
-    if (dto.assigneeUserId !== undefined) {
+    if (dto.assigneeUserId !== undefined && dto.assigneeUserId !== null) {
       await this.ensureAssigneeBelongsToBoard(card.boardId, dto.assigneeUserId);
     }
 
-    if (dto.issueTypeId !== undefined) {
+    if (dto.issueTypeId !== undefined && dto.issueTypeId !== null) {
       await this.issueTypesService.ensureBelongsToBoard(
         card.boardId,
         dto.issueTypeId,
       );
     }
 
-    if (dto.versionId !== undefined) {
+    if (dto.versionId !== undefined && dto.versionId !== null) {
       await this.versionsService.ensureBelongsToBoard(
         card.boardId,
         dto.versionId,
@@ -273,10 +273,8 @@ export class CardsService {
       priorityId: card.priorityId,
       assigneeUserId: card.assigneeUserId,
       assignee: this.toUserResponse(card.assignee),
-      issueTypeId: card.issueTypeId,
       issueType: this.toIssueTypeResponse(card.issueType),
       column: this.toColumnResponse(card.column),
-      versionId: card.versionId,
       version: this.toVersionResponse(card.version),
       startDate: card.startDate,
       dueDate: card.dueDate,

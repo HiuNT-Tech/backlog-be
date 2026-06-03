@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { StatusColor } from '@common/types';
 import {
   IsInt,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
@@ -39,13 +41,10 @@ export class CreateIssueTypeDto {
   @MaxLength(50)
   name: string;
 
-  @ApiPropertyOptional({ example: 1, minimum: 1, maximum: 10, default: 1 })
+  @ApiPropertyOptional({ enum: StatusColor, example: StatusColor.BLUE, default: StatusColor.BLUE })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(10)
-  statusColor = 1;
+  @IsEnum(StatusColor)
+  statusColor: StatusColor = StatusColor.BLUE;
 }
 
 export class UpdateIssueTypeDto extends PartialType(CreateIssueTypeDto) {}

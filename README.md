@@ -184,18 +184,54 @@ Deploy migration production:
 npm run prisma:deploy
 ```
 
-Seed admin mẫu:
+Seed dữ liệu mẫu:
 
 ```bash
 npm run db:seed
 ```
 
-Admin mặc định:
+Seed tạo dữ liệu sau:
 
-```text
-email: admin@example.com
-password: Admin@123456
+| Entity | Chi tiết |
+|---|---|
+| User | `admin@example.com` / `Admin@123456` (ADMIN, đã verify) |
+| Board | `PIPC Board`, boardCode `PIPC`, type PUBLIC |
+| BoardMember | Admin → board PIPC (role ADMIN) |
+| Columns | To Do, In Progress, Resolved, Closed (position 0-3) |
+| IssueTypes | Task, Bug |
+| Version | v1.0.0 |
+| Cards | PIPC-1 (To Do), PIPC-2 (In Progress) |
+
+Seed dùng `upsert` nên chạy lại nhiều lần không lỗi.
+
+## Reset database dev
+
+Khi schema thay đổi lớn hoặc dữ liệu dev bị sai:
+
+```bash
+# 1. Dừng NestJS server
+# 2. Reset database (xoá toàn bộ data + apply lại migration)
+npx prisma migrate reset --force
+
+# 3. Seed lại dữ liệu
+npm run db:seed
+
+# 4. Build để verify
+npm run build
 ```
+
+> **Lưu ý:** Chỉ dùng cho database local/dev. Không dùng cho database production.
+
+## Smoke test
+
+Chạy smoke test tất cả API endpoints:
+
+```bash
+bash scripts/smoke-test.sh
+```
+
+Script sẽ login bằng user dev, gọi các endpoint chính và in kết quả pass/fail.
+
 
 ## Logging
 

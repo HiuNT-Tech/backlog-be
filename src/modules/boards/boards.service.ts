@@ -82,6 +82,34 @@ export class BoardsService {
       query.assigneeUserId,
     );
 
+    console.log('cards', cards);
+
+    return this.toBoardResponse(board, cards);
+  }
+
+  async findOneByCode(
+    user: JwtPayload,
+    boardCode: string,
+    query: GetBoardDetailQueryDto,
+  ): Promise<BoardResponseDto> {
+    const boardRecord =
+      await this.boardsRepository.findBoardIdByCode(boardCode);
+    if (!boardRecord) {
+      throw new NotFoundException('Board not found');
+    }
+
+    await this.boardAccessService.ensureMember(boardRecord.id, user.userId);
+    const board = await this.boardsRepository.findBoardDetailByCode(boardCode);
+
+    if (!board) {
+      throw new NotFoundException('Board not found');
+    }
+
+    const cards = await this.boardsRepository.findBoardCards(
+      board.id,
+      query.assigneeUserId,
+    );
+
     return this.toBoardResponse(board, cards);
   }
 

@@ -35,23 +35,25 @@ export class ColumnsService {
 
   async findAll(
     user: JwtPayload,
+    boardId: number,
     query: ListColumnsQueryDto,
   ): Promise<ColumnResponseDto[]> {
-    await this.boardAccessService.ensureMember(query.boardId, user.userId);
-    const columns = await this.columnsRepository.findByBoardId(query.boardId);
+    await this.boardAccessService.ensureMember(boardId, user.userId);
+    const columns = await this.columnsRepository.findByBoardId(boardId);
     return columns.map((column) => this.toColumnResponse(column));
   }
 
   async create(
     user: JwtPayload,
+    boardId: number,
     dto: CreateColumnDto,
   ): Promise<ColumnResponseDto> {
     await this.boardAccessService.ensureRole(
-      dto.boardId,
+      boardId,
       user.userId,
       boardManagerRoles,
     );
-    const column = await this.columnsRepository.create(dto);
+    const column = await this.columnsRepository.create(boardId, dto);
 
     return {
       ...this.toColumnResponse(column),
@@ -61,12 +63,13 @@ export class ColumnsService {
 
   async update(
     user: JwtPayload,
+    boardId: number,
     columnId: number,
     dto: UpdateColumnDto,
   ): Promise<ColumnResponseDto> {
-    const column = await this.ensureColumnExists(columnId);
+    const column = await this.ensureColumnBelongsToBoard(boardId, columnId);
     await this.boardAccessService.ensureRole(
-      column.boardId,
+      boardId,
       user.userId,
       boardManagerRoles,
     );
@@ -86,25 +89,26 @@ export class ColumnsService {
 
   async remove(
     user: JwtPayload,
+    boardId: number,
     columnId: number,
   ): Promise<DeleteColumnResponseDto> {
-    const column = await this.ensureColumnExists(columnId);
+    const column = await this.ensureColumnBelongsToBoard(boardId, columnId);
     await this.boardAccessService.ensureRole(
-      column.boardId,
+      boardId,
       user.userId,
       boardManagerRoles,
     );
-    await this.columnsRepository.softDeleteWithCards(columnId, column.boardId);
+    await this.columnsRepository.softDeleteWithCards(columnId, boardId);
 
     return {
       deleteResult: 'Column and its Cards deleted successfully!',
     };
   }
 
-  private async ensureColumnExists(columnId: number): Promise<ColumnRecord> {
+  private async ensureColumnBelongsToBoard(boardId: number, columnId: number): Promise<ColumnRecord> {
     const column = await this.columnsRepository.findActiveById(columnId);
 
-    if (!column) {
+    if (!column || column.boardId !== boardId) {
       throw new NotFoundException('Column not found');
     }
 

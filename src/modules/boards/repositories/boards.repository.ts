@@ -6,6 +6,7 @@ import {
   toPaginatedResponse,
 } from '@common/utils/pagination.util';
 import { CreateBoardDto, GetBoardUsersQueryDto } from '../dto/board.dto';
+import { DEFAULT_COLUMNS } from '../constants';
 
 const boardBaseSelect = {
   id: true,
@@ -78,12 +79,7 @@ type CreateBoardWithDefaultsParams = {
   userId: number;
 };
 
-const defaultColumns = [
-  { title: 'To Do', statusColor: 7, position: 0 },
-  { title: 'In Progress', statusColor: 5, position: 1 },
-  { title: 'Resolved', statusColor: 6, position: 2 },
-  { title: 'Closed', statusColor: 4, position: 3 },
-] as const;
+
 
 @Injectable()
 export class BoardsRepository {
@@ -93,6 +89,13 @@ export class BoardsRepository {
     return this.prisma.board.findFirst({
       where: { id, deletedAt: null },
       select: boardBaseSelect,
+    });
+  }
+
+  findBoardIdByCode(boardCode: string) {
+    return this.prisma.board.findFirst({
+      where: { boardCode, deletedAt: null },
+      select: { id: true },
     });
   }
 
@@ -125,6 +128,15 @@ export class BoardsRepository {
       select: boardDetailSelect,
     });
   }
+
+  findBoardDetailByCode(boardCode: string) {
+    return this.prisma.board.findFirst({
+      where: { boardCode, deletedAt: null },
+      select: boardDetailSelect,
+    });
+  }
+
+
 
   findBoardCards(boardId: number, assigneeUserId?: number) {
     return this.prisma.card.findMany({
@@ -161,7 +173,7 @@ export class BoardsRepository {
       });
 
       await tx.column.createMany({
-        data: defaultColumns.map((column) => ({
+        data: DEFAULT_COLUMNS.map((column) => ({
           boardId: createdBoard.id,
           ...column,
         })),

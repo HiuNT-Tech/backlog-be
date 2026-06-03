@@ -24,6 +24,19 @@ enum BoardMemberRole {
   GUEST
 }
 
+enum StatusColor {
+  RED
+  ORANGE
+  PINK
+  INDIGO
+  BLUE
+  TEAL
+  GREEN
+  YELLOW
+  BRIGHT_RED
+  BLACK
+}
+
 model User {
   id          Int       @id @default(autoincrement())
   email       String    @unique
@@ -108,7 +121,7 @@ model Column {
   id          Int       @id @default(autoincrement())
   boardId     Int       @map("board_id")
   title       String    @db.VarChar(50)
-  statusColor Int       @default(1) @map("status_color") @db.SmallInt
+  statusColor StatusColor @default(BLUE) @map("status_color")
   position    Int       @default(0)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -117,6 +130,7 @@ model Column {
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
 
+  @@unique([boardId, title], map: "uq_columns_board_title")
   @@index([boardId, position], map: "idx_columns_board_position")
   @@index([boardId], map: "idx_columns_board_id")
   @@map("columns")
@@ -126,7 +140,7 @@ model IssueType {
   id          Int       @id @default(autoincrement())
   boardId     Int       @map("board_id")
   name        String    @db.VarChar(50)
-  statusColor Int       @default(1) @map("status_color") @db.SmallInt
+  statusColor StatusColor @default(BLUE) @map("status_color")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
@@ -153,6 +167,7 @@ model Version {
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
 
+  @@unique([boardId, name], map: "uq_versions_board_name")
   @@index([boardId], map: "idx_versions_board_id")
   @@index([boardId, startDate, endDate], map: "idx_versions_board_dates")
   @@map("versions")

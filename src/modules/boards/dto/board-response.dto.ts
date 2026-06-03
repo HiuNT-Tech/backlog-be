@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BoardMemberRole, BoardType } from '@prisma/client';
+import { StatusColor } from '@common/types';
 
 export class BoardMemberResponseDto {
   @ApiProperty({ example: 1 })
@@ -58,7 +59,7 @@ export class BoardColumnResponseDto {
   title: string;
 
   @ApiProperty({ example: 7 })
-  statusColor: number;
+  statusColor: StatusColor;
 
   @ApiProperty({ example: 0 })
   position: number;

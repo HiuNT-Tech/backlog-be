@@ -26,7 +26,7 @@ import {
 import { ColumnsService } from './columns.service';
 
 @ApiColumnsControllerDocs()
-@Controller('columns')
+@Controller('boards/:id/columns')
 export class ColumnsController {
   constructor(private readonly columnsService: ColumnsService) {}
 
@@ -34,33 +34,40 @@ export class ColumnsController {
   @Get()
   findAll(
     @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) boardId: number,
     @Query() query: ListColumnsQueryDto,
   ) {
-    return this.columnsService.findAll(user, query);
+    return this.columnsService.findAll(user, boardId, query);
   }
 
   @ApiCreateColumnDocs()
   @Post()
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateColumnDto) {
-    return this.columnsService.create(user, dto);
+  create(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) boardId: number,
+    @Body() dto: CreateColumnDto,
+  ) {
+    return this.columnsService.create(user, boardId, dto);
   }
 
   @ApiUpdateColumnDocs()
-  @Put(':id')
+  @Put(':columnId')
   update(
     @CurrentUser() user: JwtPayload,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) boardId: number,
+    @Param('columnId', ParseIntPipe) columnId: number,
     @Body() dto: UpdateColumnDto,
   ) {
-    return this.columnsService.update(user, id, dto);
+    return this.columnsService.update(user, boardId, columnId, dto);
   }
 
   @ApiDeleteColumnDocs()
-  @Delete(':id')
+  @Delete(':columnId')
   remove(
     @CurrentUser() user: JwtPayload,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) boardId: number,
+    @Param('columnId', ParseIntPipe) columnId: number,
   ) {
-    return this.columnsService.remove(user, id);
+    return this.columnsService.remove(user, boardId, columnId);
   }
 }
