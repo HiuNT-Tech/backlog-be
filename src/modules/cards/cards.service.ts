@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardAccessService } from '@modules/boards/board-access.service';
 import { IssueTypesService } from '@modules/issue-types/issue-types.service';
@@ -132,15 +129,24 @@ export class CardsService {
     ]);
 
     if (!prevColumn || prevColumn.boardId !== card.boardId) {
-      throw new NotFoundException('Previous column not found');
+      throw new BusinessException(
+        ErrorCode.COLUMN_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (!nextColumn || nextColumn.boardId !== card.boardId) {
-      throw new NotFoundException('Next column not found');
+      throw new BusinessException(
+        ErrorCode.COLUMN_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (card.columnId !== dto.prevColumnId) {
-      throw new BadRequestException('Current card is not in previous column');
+      throw new BusinessException(
+        ErrorCode.MOVE_CARD_WRONG_COLUMN,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.ensureMoveCardsBelongToColumns(card.boardId, dto);
@@ -156,7 +162,10 @@ export class CardsService {
     const card = await this.cardsRepository.findActiveById(cardId);
 
     if (!card) {
-      throw new NotFoundException('Card not found');
+      throw new BusinessException(
+        ErrorCode.CARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     await this.boardAccessService.ensureMember(card.boardId, user.userId);
@@ -174,7 +183,10 @@ export class CardsService {
     );
 
     if (!column) {
-      throw new NotFoundException('Column not found');
+      throw new BusinessException(
+        ErrorCode.COLUMN_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
   }
 
@@ -188,7 +200,10 @@ export class CardsService {
     );
 
     if (memberCount === 0) {
-      throw new ForbiddenException('Assignee is not a board member');
+      throw new BusinessException(
+        ErrorCode.ASSIGNEE_NOT_BOARD_MEMBER,
+        HttpStatus.FORBIDDEN,
+      );
     }
   }
 
@@ -201,8 +216,9 @@ export class CardsService {
     }
 
     if (new Date(startDate).getTime() > new Date(dueDate).getTime()) {
-      throw new BadRequestException(
-        'startDate must be before or equal dueDate',
+      throw new BusinessException(
+        ErrorCode.INVALID_DATE_RANGE,
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -215,11 +231,17 @@ export class CardsService {
     const nextCardIds = dto.nextCards.map((card) => card.id);
 
     if (!nextCardIds.includes(dto.currentCardId)) {
-      throw new BadRequestException('nextCards must include currentCardId');
+      throw new BusinessException(
+        ErrorCode.MOVE_CARD_MISSING_CURRENT,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     if (prevCardIds.includes(dto.currentCardId)) {
-      throw new BadRequestException('prevCards must not include currentCardId');
+      throw new BusinessException(
+        ErrorCode.MOVE_CARD_INVALID_PREV,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const uniquePrevCardIds = [...new Set(prevCardIds)];
@@ -229,7 +251,10 @@ export class CardsService {
       uniquePrevCardIds.length !== prevCardIds.length ||
       uniqueNextCardIds.length !== nextCardIds.length
     ) {
-      throw new BadRequestException('Move card payload contains duplicate ids');
+      throw new BusinessException(
+        ErrorCode.MOVE_CARD_DUPLICATE_IDS,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const [prevCount, nextCount] = await Promise.all([
@@ -243,14 +268,16 @@ export class CardsService {
     ]);
 
     if (prevCount !== prevCardIds.length) {
-      throw new BadRequestException(
-        'All previous cards must belong to previous column',
+      throw new BusinessException(
+        ErrorCode.MOVE_CARD_PREV_MISMATCH,
+        HttpStatus.BAD_REQUEST,
       );
     }
 
     if (nextCount !== nextCardIds.length) {
-      throw new BadRequestException(
-        'All next cards must belong to next column or be the current card',
+      throw new BusinessException(
+        ErrorCode.MOVE_CARD_NEXT_MISMATCH,
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -270,7 +297,7 @@ export class CardsService {
       cardCode: card.cardCode,
       title: card.title,
       description: card.description,
-      priorityId: card.priorityId,
+      priority: card.priority,
       assigneeUserId: card.assigneeUserId,
       assignee: this.toUserResponse(card.assignee),
       issueType: this.toIssueTypeResponse(card.issueType),

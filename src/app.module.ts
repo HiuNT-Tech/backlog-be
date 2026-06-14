@@ -15,7 +15,9 @@ import { BoardsModule } from '@modules/boards/boards.module';
 import { CardsModule } from '@modules/cards/cards.module';
 import { ColumnsModule } from '@modules/columns/columns.module';
 import { HealthModule } from '@modules/health/health.module';
+import { InvitationsModule } from '@modules/invitations/invitations.module';
 import { IssueTypesModule } from '@modules/issue-types/issue-types.module';
+import { MeModule } from '@modules/me/me.module';
 import { UsersModule } from '@modules/users/users.module';
 import { VersionsModule } from '@modules/versions/versions.module';
 import { AppController } from './app.controller';
@@ -45,7 +47,9 @@ import { AppController } from './app.controller';
     BoardsModule,
     CardsModule,
     ColumnsModule,
+    InvitationsModule,
     IssueTypesModule,
+    MeModule,
     UsersModule,
     VersionsModule,
     HealthModule,

@@ -1,7 +1,9 @@
-import { ExecutionContext, Injectable, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { ExecutionContext, HttpStatus, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '@common/constants/app.constant';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -24,11 +26,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   override handleRequest(err: any, user: any, info: any) {
     if (info?.name === 'TokenExpiredError' || info?.message === 'jwt expired') {
-      throw new HttpException('Need to refresh token.', HttpStatus.GONE);
+      throw new BusinessException(
+        ErrorCode.INVALID_TOKEN,
+        HttpStatus.GONE,
+        'Need to refresh token.',
+      );
     }
 
     if (err || !user) {
-      throw err || new UnauthorizedException('Unauthorized! (token not found)');
+      throw err || new BusinessException(
+        ErrorCode.INVALID_TOKEN,
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     return user;

@@ -1,10 +1,8 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { BoardMemberRole } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 
 @Injectable()
 export class BoardAccessService {
@@ -17,7 +15,10 @@ export class BoardAccessService {
     });
 
     if (!board) {
-      throw new NotFoundException('Board not found');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const member = await this.prisma.boardMember.findFirst({
@@ -33,7 +34,10 @@ export class BoardAccessService {
     });
 
     if (!member) {
-      throw new ForbiddenException('Current user is not a board member');
+      throw new BusinessException(
+        ErrorCode.NOT_BOARD_MEMBER,
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     return member;
@@ -43,7 +47,10 @@ export class BoardAccessService {
     const member = await this.ensureMember(boardId, userId);
 
     if (!roles.includes(member.role)) {
-      throw new ForbiddenException('Current user does not have permission');
+      throw new BusinessException(
+        ErrorCode.INSUFFICIENT_BOARD_PERMISSION,
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     return member;

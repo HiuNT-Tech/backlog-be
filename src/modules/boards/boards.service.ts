@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { BoardMemberRole, Prisma } from '@prisma/client';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardAccessService } from './board-access.service';
@@ -12,15 +7,19 @@ import {
   GetBoardDetailQueryDto,
   GetBoardUsersQueryDto,
   UpdateBoardDto,
+  UpdateMemberRoleDto,
 } from './dto/board.dto';
 import {
   BoardCardResponseDto,
   BoardColumnResponseDto,
+  BoardMemberResponseDto,
   BoardResponseDto,
   BoardUserResponseDto,
   BoardUsersResponseDto,
 } from './dto/board-response.dto';
 import { BoardsRepository } from './repositories/boards.repository';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 
 type BoardDetail = NonNullable<
   Awaited<ReturnType<BoardsRepository['findBoardDetail']>>
@@ -54,7 +53,10 @@ export class BoardsService {
     );
 
     if (!board) {
-      throw new NotFoundException('Board not found after creation');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     return this.toBoardResponse(board, []);
@@ -74,15 +76,16 @@ export class BoardsService {
     const board = await this.boardsRepository.findBoardDetail(boardId);
 
     if (!board) {
-      throw new NotFoundException('Board not found');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const cards = await this.boardsRepository.findBoardCards(
       boardId,
       query.assigneeUserId,
     );
-
-    console.log('cards', cards);
 
     return this.toBoardResponse(board, cards);
   }
@@ -95,14 +98,20 @@ export class BoardsService {
     const boardRecord =
       await this.boardsRepository.findBoardIdByCode(boardCode);
     if (!boardRecord) {
-      throw new NotFoundException('Board not found');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     await this.boardAccessService.ensureMember(boardRecord.id, user.userId);
     const board = await this.boardsRepository.findBoardDetailByCode(boardCode);
 
     if (!board) {
-      throw new NotFoundException('Board not found');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const cards = await this.boardsRepository.findBoardCards(
@@ -135,7 +144,10 @@ export class BoardsService {
     const existingBoard = await this.boardsRepository.findBoardById(boardId);
 
     if (!existingBoard) {
-      throw new NotFoundException('Board not found');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (dto.columns) {
@@ -160,8 +172,9 @@ export class BoardsService {
       const cardCount = await this.boardsRepository.countCards(boardId);
 
       if (cardCount > 0) {
-        throw new BadRequestException(
-          'Cannot update boardCode after cards have been created',
+        throw new BusinessException(
+          ErrorCode.BOARD_CODE_UPDATE_FORBIDDEN,
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -182,7 +195,10 @@ export class BoardsService {
     );
 
     if (!board) {
-      throw new NotFoundException('Board not found');
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const cards = await this.boardsRepository.findBoardCards(boardId);
@@ -216,6 +232,86 @@ export class BoardsService {
     };
   }
 
+  async updateMemberRole(
+    user: JwtPayload,
+    boardId: number,
+    targetUserId: number,
+    dto: UpdateMemberRoleDto,
+  ): Promise<BoardMemberResponseDto> {
+    await this.boardAccessService.ensureRole(
+      boardId,
+      user.userId,
+      boardManagerRoles,
+    );
+
+    const member = await this.ensureBoardMember(boardId, targetUserId);
+
+    if (member.role === dto.role) {
+      return { userId: targetUserId, role: member.role };
+    }
+
+    if (
+      member.role === BoardMemberRole.ADMIN &&
+      dto.role !== BoardMemberRole.ADMIN
+    ) {
+      await this.ensureNotLastAdmin(boardId);
+    }
+
+    const updated = await this.boardsRepository.updateMemberRole(
+      member.id,
+      dto.role,
+    );
+
+    return { userId: updated.userId, role: updated.role };
+  }
+
+  async removeMember(
+    user: JwtPayload,
+    boardId: number,
+    targetUserId: number,
+  ): Promise<void> {
+    await this.boardAccessService.ensureRole(
+      boardId,
+      user.userId,
+      boardManagerRoles,
+    );
+
+    const member = await this.ensureBoardMember(boardId, targetUserId);
+
+    if (member.role === BoardMemberRole.ADMIN) {
+      await this.ensureNotLastAdmin(boardId);
+    }
+
+    await this.boardsRepository.softDeleteMember(member.id);
+  }
+
+  private async ensureBoardMember(boardId: number, targetUserId: number) {
+    const member = await this.boardsRepository.findActiveMember(
+      boardId,
+      targetUserId,
+    );
+
+    if (!member) {
+      throw new BusinessException(
+        ErrorCode.BOARD_MEMBER_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return member;
+  }
+
+  private async ensureNotLastAdmin(boardId: number): Promise<void> {
+    const adminCount = await this.boardsRepository.countActiveAdmins(boardId);
+
+    if (adminCount <= 1) {
+      throw new BusinessException(
+        ErrorCode.CANNOT_REMOVE_LAST_ADMIN,
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
+
   private async ensureBoardCodeAvailable(
     boardCode: string,
     currentBoardId?: number,
@@ -223,7 +319,10 @@ export class BoardsService {
     const existing = await this.boardsRepository.findByCode(boardCode);
 
     if (existing && existing.id !== currentBoardId) {
-      throw new ConflictException('Board code already exists');
+      throw new BusinessException(
+        ErrorCode.BOARD_CODE_EXISTS,
+        HttpStatus.CONFLICT,
+      );
     }
   }
 
@@ -238,7 +337,10 @@ export class BoardsService {
     );
 
     if (matchingCount !== uniqueColumnIds.length) {
-      throw new BadRequestException('All columns must belong to the board');
+      throw new BusinessException(
+        ErrorCode.COLUMNS_NOT_BELONG_TO_BOARD,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -252,7 +354,10 @@ export class BoardsService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException('Board code already exists');
+        throw new BusinessException(
+          ErrorCode.BOARD_CODE_EXISTS,
+          HttpStatus.CONFLICT,
+        );
       }
 
       throw error;
@@ -305,7 +410,7 @@ export class BoardsService {
         cardCode: card.cardCode,
         title: card.title,
         description: card.description,
-        priorityId: card.priorityId,
+        priority: card.priority,
         assigneeUserId: card.assigneeUserId,
         position: card.position,
         createdAt: card.createdAt,

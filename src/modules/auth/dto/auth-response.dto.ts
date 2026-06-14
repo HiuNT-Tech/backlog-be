@@ -50,3 +50,8 @@ export class LogoutResponseDto {
   @ApiProperty({ example: 'Logged out successfully' })
   message: string;
 }
+
+export class MessageResponseDto {
+  @ApiProperty({ example: 'Done' })
+  message: string;
+}

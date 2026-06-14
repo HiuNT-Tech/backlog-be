@@ -1,8 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 import { BoardMemberRole } from '@prisma/client';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardAccessService } from '@modules/boards/board-access.service';
@@ -81,7 +79,10 @@ export class ColumnsService {
     const updatedColumn = await this.columnsRepository.update(columnId, dto);
 
     if (!updatedColumn) {
-      throw new NotFoundException('Column not found');
+      throw new BusinessException(
+        ErrorCode.COLUMN_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return this.toColumnResponse(updatedColumn);
@@ -109,7 +110,10 @@ export class ColumnsService {
     const column = await this.columnsRepository.findActiveById(columnId);
 
     if (!column || column.boardId !== boardId) {
-      throw new NotFoundException('Column not found');
+      throw new BusinessException(
+        ErrorCode.COLUMN_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return column;
@@ -126,7 +130,10 @@ export class ColumnsService {
     );
 
     if (matchingCount !== uniqueCardIds.length) {
-      throw new BadRequestException('All cards must belong to the column');
+      throw new BusinessException(
+        ErrorCode.CARDS_NOT_BELONG_TO_COLUMN,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 

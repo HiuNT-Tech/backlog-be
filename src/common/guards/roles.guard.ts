@@ -1,13 +1,15 @@
 import {
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
+  HttpStatus,
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { ROLES_KEY } from '@common/constants/app.constant';
 import { Role } from '@common/enums/role.enum';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -27,7 +29,10 @@ export class RolesGuard implements CanActivate {
     const user = request.user;
 
     if (!user || !requiredRoles.includes(user.role)) {
-      throw new ForbiddenException('Forbidden resource');
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN_RESOURCE,
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     return true;

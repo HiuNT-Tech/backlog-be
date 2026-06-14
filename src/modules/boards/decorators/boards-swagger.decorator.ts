@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
 import {
+  BoardMemberResponseDto,
   BoardResponseDto,
   BoardUsersResponseDto,
 } from '../dto/board-response.dto';
@@ -127,6 +128,60 @@ export function ApiUpdateBoardDocs() {
     }),
     ApiConflictResponse({
       description: 'Board code already exists.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
+export function ApiUpdateMemberRoleDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update member role',
+      description: 'Change a board member role. ADMIN/PM only.',
+    }),
+    ApiParam({ name: 'id', type: Number, example: 1 }),
+    ApiParam({ name: 'userId', type: Number, example: 2 }),
+    ...authDocs,
+    ApiOkResponse({
+      description: 'Member role updated.',
+      type: BoardMemberResponseDto,
+    }),
+    ApiForbiddenResponse({
+      description: 'Current user is not ADMIN or PM on this board.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotFoundResponse({
+      description: 'Board or member not found.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiConflictResponse({
+      description: 'Cannot demote the last admin.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
+export function ApiRemoveMemberDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Remove board member',
+      description:
+        'Remove a member from the board (soft delete). ADMIN/PM only.',
+    }),
+    ApiParam({ name: 'id', type: Number, example: 1 }),
+    ApiParam({ name: 'userId', type: Number, example: 2 }),
+    ...authDocs,
+    ApiOkResponse({ description: 'Member removed.' }),
+    ApiForbiddenResponse({
+      description: 'Current user is not ADMIN or PM on this board.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotFoundResponse({
+      description: 'Board or member not found.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiConflictResponse({
+      description: 'Cannot remove the last admin.',
       type: ApiErrorResponseDto,
     }),
   );

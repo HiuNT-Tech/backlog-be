@@ -3,19 +3,28 @@ import { ConfigService } from '@nestjs/config';
 import { Role } from '@common/enums/role.enum';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
-import { comparePassword } from '@common/utils/crypto.util';
+import {
+  comparePassword,
+  generateRandomToken,
+} from '@common/utils/crypto.util';
+import {
+  getResetPasswordUrl,
+  getVerificationUrl,
+} from '@common/utils/url.util';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { UserEntity } from '@modules/users/entities/user.entity';
 import { UserResponseDto } from '@modules/users/dto/user-response.dto';
+import { InvitationsService } from '@modules/invitations/invitations.service';
 import { UsersService } from '@modules/users/users.service';
-import {
-  EMAIL_PROVIDER,
-  EmailProvider,
-} from '../../providers/brevo.provider';
+import { EMAIL_PROVIDER, EmailProvider } from '../../providers/brevo.provider';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { TokenService } from './token.service';
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 type UserResponse = {
   id: number;
@@ -55,6 +64,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly configService: ConfigService,
+    private readonly invitationsService: InvitationsService,
     @Inject(EMAIL_PROVIDER)
     private readonly emailProvider: EmailProvider,
   ) {}
@@ -134,8 +144,57 @@ export class AuthService {
       user.id,
       dto.token,
     );
+    await this.invitationsService.bindPendingByEmail(verifiedUser);
 
     return this.toUserResponse(verifiedUser);
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(dto.email);
+
+    if (user && user.isActive) {
+      const token = generateRandomToken();
+      const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+      await this.usersService.setResetPasswordToken(user.id, token, expiresAt);
+      await this.sendResetPasswordEmail(user.email, token);
+    }
+
+    return {
+      message: 'If the email exists, a password reset link has been sent',
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(dto.email);
+
+    if (!user) {
+      throw new BusinessException(
+        ErrorCode.USER_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (!user.resetPasswordToken || user.resetPasswordToken !== dto.token) {
+      throw new BusinessException(
+        ErrorCode.INVALID_RESET_TOKEN,
+        HttpStatus.NOT_ACCEPTABLE,
+      );
+    }
+
+    if (
+      !user.resetPasswordExpiresAt ||
+      user.resetPasswordExpiresAt.getTime() < Date.now()
+    ) {
+      throw new BusinessException(
+        ErrorCode.RESET_TOKEN_EXPIRED,
+        HttpStatus.NOT_ACCEPTABLE,
+      );
+    }
+
+    await this.usersService.resetPassword(user.id, dto.newPassword);
+    await this.refreshTokenRepository.revokeAllForUser(user.id);
+
+    return { message: 'Password has been reset successfully' };
   }
 
   async refreshToken(refreshToken: string | undefined): Promise<TokenResponse> {
@@ -225,11 +284,11 @@ export class AuthService {
       );
     }
 
-    const WEBSITE_DOMAIN = this.configService
-      .getOrThrow<string>('app.frontendUrl')
-      .replace(/\/+$/, '');
-
-    const verificationUrl = `${WEBSITE_DOMAIN}/account/verification?email=${encodeURIComponent(existUser.email)}&token=${encodeURIComponent(existUser.verifyToken)}`;
+    const verificationUrl = getVerificationUrl(
+      this.configService,
+      existUser.email,
+      existUser.verifyToken,
+    );
 
     const customSubject =
       'Backlog: Please verify your email before using our services!';
@@ -242,6 +301,21 @@ export class AuthService {
       customSubject,
       htmlContent,
     );
+  }
+
+  private async sendResetPasswordEmail(
+    email: string,
+    token: string,
+  ): Promise<void> {
+    const resetUrl = getResetPasswordUrl(this.configService, email, token);
+
+    const customSubject = 'Backlog: Reset your password';
+    const htmlContent = `
+      <h3>Reset your password</h3>
+      <p>Click the link below to set a new password. This link expires in 1 hour.</p>
+      <h3>${resetUrl}</h3>
+    `;
+    await this.emailProvider.sendEmail(email, customSubject, htmlContent);
   }
 
   private async buildLoginResponse(user: UserEntity): Promise<LoginResponse> {

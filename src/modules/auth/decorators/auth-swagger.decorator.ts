@@ -18,6 +18,7 @@ import {
   AuthUserResponseDto,
   LoginResponseDto,
   LogoutResponseDto,
+  MessageResponseDto,
   RefreshTokenResponseDto,
 } from '../dto/auth-response.dto';
 
@@ -89,6 +90,51 @@ export function ApiVerifyAccountDocs() {
     }),
     ApiNotAcceptableResponse({
       description: 'User already verified or token is invalid.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
+export function ApiForgotPasswordDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Forgot password',
+      description:
+        'Send a password reset link if an active account exists for the email. ' +
+        'Always returns success to avoid leaking whether the email is registered.',
+    }),
+    ApiOkResponse({
+      description: 'Request accepted.',
+      type: MessageResponseDto,
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid payload.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
+export function ApiResetPasswordDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Reset password',
+      description:
+        'Reset the account password using the emailed token, then revoke all sessions.',
+    }),
+    ApiOkResponse({
+      description: 'Password reset successfully.',
+      type: MessageResponseDto,
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid payload.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotFoundResponse({
+      description: 'User not found.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotAcceptableResponse({
+      description: 'Reset token is invalid or expired.',
       type: ApiErrorResponseDto,
     }),
   );

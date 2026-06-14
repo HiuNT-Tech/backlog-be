@@ -1,8 +1,6 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 import { BoardMemberRole, Prisma } from '@prisma/client';
 import { CountedResponse } from '@common/dto/response.dto';
 import { JwtPayload } from '@/types/jwt-payload.type';
@@ -119,7 +117,10 @@ export class IssueTypesService {
     );
 
     if (!issueType) {
-      throw new NotFoundException('Issue type not found');
+      throw new BusinessException(
+        ErrorCode.ISSUE_TYPE_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return issueType;
@@ -136,7 +137,10 @@ export class IssueTypesService {
     );
 
     if (existing && existing.id !== currentIssueTypeId) {
-      throw new ConflictException('Issue type name already exists');
+      throw new BusinessException(
+        ErrorCode.ISSUE_TYPE_NAME_EXISTS,
+        HttpStatus.CONFLICT,
+      );
     }
   }
 
@@ -150,7 +154,10 @@ export class IssueTypesService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException('Issue type name already exists');
+        throw new BusinessException(
+          ErrorCode.ISSUE_TYPE_NAME_EXISTS,
+          HttpStatus.CONFLICT,
+        );
       }
 
       throw error;

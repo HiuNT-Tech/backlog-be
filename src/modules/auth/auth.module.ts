@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { InvitationsModule } from '@modules/invitations/invitations.module';
 import { UsersModule } from '@modules/users/users.module';
 import {
   BrevoEmailProvider,
@@ -13,7 +14,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), UsersModule],
+  imports: [
+    PassportModule,
+    JwtModule.register({}),
+    UsersModule,
+    InvitationsModule,
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -24,5 +30,3 @@ import { TokenService } from './token.service';
   ],
 })
 export class AuthModule {}
-
-
