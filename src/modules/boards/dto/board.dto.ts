@@ -101,6 +101,12 @@ export class GetBoardDetailQueryDto {
   assigneeUserId?: number;
 }
 
+export class UpdateMemberRoleDto {
+  @ApiProperty({ enum: BoardMemberRole, example: BoardMemberRole.MEMBER })
+  @IsEnum(BoardMemberRole)
+  role: BoardMemberRole;
+}
+
 export class GetBoardUsersQueryDto {
   @ApiPropertyOptional({ example: 'admin' })
   @IsOptional()

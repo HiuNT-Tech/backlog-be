@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { createHash } from 'node:crypto';
 import { JwtPayload } from '@/types/jwt-payload.type';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 
 type TokenPayload = Pick<JwtPayload, 'userId' | 'email' | 'role'>;
 
@@ -35,7 +37,10 @@ export class TokenService {
     const decoded = this.jwtService.decode<{ exp?: number }>(token);
 
     if (!decoded?.exp) {
-      throw new UnauthorizedException('Invalid token');
+      throw new BusinessException(
+        ErrorCode.INVALID_TOKEN,
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     return new Date(decoded.exp * 1000);

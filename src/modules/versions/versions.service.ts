@@ -1,8 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 import { BoardMemberRole } from '@prisma/client';
 import { CountedResponse } from '@common/dto/response.dto';
 import { JwtPayload } from '@/types/jwt-payload.type';
@@ -120,7 +118,10 @@ export class VersionsService {
     );
 
     if (!version) {
-      throw new NotFoundException('Version not found');
+      throw new BusinessException(
+        ErrorCode.VERSION_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return version;
@@ -135,8 +136,9 @@ export class VersionsService {
     }
 
     if (new Date(startDate).getTime() > new Date(endDate).getTime()) {
-      throw new BadRequestException(
-        'startDate must be before or equal endDate',
+      throw new BusinessException(
+        ErrorCode.INVALID_DATE_RANGE,
+        HttpStatus.BAD_REQUEST,
       );
     }
   }

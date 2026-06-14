@@ -19,14 +19,18 @@ import { AuthService } from './auth.service';
 import {
   ApiAuthControllerDocs,
   ApiCurrentUserDocs,
+  ApiForgotPasswordDocs,
   ApiLoginDocs,
   ApiLogoutDocs,
   ApiRefreshTokenDocs,
   ApiRegisterDocs,
+  ApiResetPasswordDocs,
   ApiVerifyAccountDocs,
 } from './decorators/auth-swagger.decorator';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 const COOKIE_MAX_AGE = 14 * 24 * 60 * 60 * 1000;
 
@@ -83,6 +87,24 @@ export class AuthController {
   @Post('verify-account')
   verifyAccount(@Body() dto: VerifyAccountDto) {
     return this.authService.verifyAccount(dto);
+  }
+
+  @ApiForgotPasswordDocs()
+  @Public()
+  @RateLimit(5)
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @ApiResetPasswordDocs()
+  @Public()
+  @RateLimit(5)
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @ApiLogoutDocs()

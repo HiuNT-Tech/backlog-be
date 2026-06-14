@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -18,13 +20,16 @@ import {
   ApiGetBoardDocs,
   ApiGetBoardUsersDocs,
   ApiListBoardsDocs,
+  ApiRemoveMemberDocs,
   ApiUpdateBoardDocs,
+  ApiUpdateMemberRoleDocs,
 } from './decorators/boards-swagger.decorator';
 import {
   CreateBoardDto,
   GetBoardDetailQueryDto,
   GetBoardUsersQueryDto,
   UpdateBoardDto,
+  UpdateMemberRoleDto,
 } from './dto/board.dto';
 import { BoardsService } from './boards.service';
 
@@ -74,5 +79,27 @@ export class BoardsController {
     @Query() query: GetBoardUsersQueryDto,
   ) {
     return this.boardsService.findUsers(user, id, query);
+  }
+
+  @ApiUpdateMemberRoleDocs()
+  @Patch(':id/members/:userId')
+  updateMemberRole(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() dto: UpdateMemberRoleDto,
+  ) {
+    return this.boardsService.updateMemberRole(user, id, userId, dto);
+  }
+
+  @ApiRemoveMemberDocs()
+  @HttpCode(HttpStatus.OK)
+  @Delete(':id/members/:userId')
+  removeMember(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.boardsService.removeMember(user, id, userId);
   }
 }

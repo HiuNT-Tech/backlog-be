@@ -1,4 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 import {
   DEFAULT_UPLOAD_MAX_FILE_SIZE_BYTES,
   DEFAULT_UPLOAD_MIME_TYPES,
@@ -28,7 +30,11 @@ export const createUploadFileFilter = (
     }
 
     callback(
-      new BadRequestException(`Unsupported file type: ${file.mimetype}`),
+      new BusinessException(
+        ErrorCode.FILE_TYPE_UNSUPPORTED,
+        HttpStatus.BAD_REQUEST,
+        `Unsupported file type: ${file.mimetype}`,
+      ),
       false,
     );
   };
@@ -56,20 +62,29 @@ export const validateUploadedFile = (
 
   if (!file) {
     if (normalized.required) {
-      throw new BadRequestException('File is required.');
+      throw new BusinessException(
+        ErrorCode.FILE_REQUIRED,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     return undefined;
   }
 
   if (file.size > normalized.maxSizeBytes) {
-    throw new BadRequestException(
+    throw new BusinessException(
+      ErrorCode.FILE_TOO_LARGE,
+      HttpStatus.BAD_REQUEST,
       `File size must be <= ${normalized.maxSizeBytes} bytes.`,
     );
   }
 
   if (!normalized.allowedMimeTypes.includes(file.mimetype)) {
-    throw new BadRequestException(`Unsupported file type: ${file.mimetype}`);
+    throw new BusinessException(
+      ErrorCode.FILE_TYPE_UNSUPPORTED,
+      HttpStatus.BAD_REQUEST,
+      `Unsupported file type: ${file.mimetype}`,
+    );
   }
 
   return file;
@@ -83,14 +98,21 @@ export const validateUploadedFiles = (
 
   if (!files || files.length === 0) {
     if (normalized.required) {
-      throw new BadRequestException('At least one file is required.');
+      throw new BusinessException(
+        ErrorCode.FILE_REQUIRED,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     return [];
   }
 
   if (options.maxFiles !== undefined && files.length > options.maxFiles) {
-    throw new BadRequestException(`Maximum ${options.maxFiles} files allowed.`);
+    throw new BusinessException(
+      ErrorCode.FILE_MAX_COUNT_EXCEEDED,
+      HttpStatus.BAD_REQUEST,
+      `Maximum ${options.maxFiles} files allowed.`,
+    );
   }
 
   return files.map((file) => validateUploadedFile(file, options)!);

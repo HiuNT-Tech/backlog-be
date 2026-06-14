@@ -4,7 +4,11 @@ import { ErrorCode } from '@common/exceptions/error-code';
 import { PaginatedResponse } from '@common/dto/response.dto';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { Role } from '@common/enums/role.enum';
-import { hashPassword, generateRandomToken } from '@common/utils/crypto.util';
+import {
+  hashPassword,
+  generateRandomToken,
+  comparePassword,
+} from '@common/utils/crypto.util';
 import { normalizeEmail } from '@common/utils/string.util';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -108,6 +112,56 @@ export class UsersService {
     }
 
     return this.toResponse(user);
+  }
+
+  async updateProfile(
+    id: number,
+    data: { displayName?: string; avatar?: string; phone?: string },
+  ): Promise<UserResponseDto> {
+    const user = await this.usersRepository.updateProfile(id, data);
+
+    if (!user) {
+      this.throwUserNotFound();
+    }
+
+    return this.toResponse(user);
+  }
+
+  async changePassword(
+    id: number,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.usersRepository.findActiveById(id);
+
+    if (!user) {
+      this.throwUserNotFound();
+    }
+
+    const isMatch = await comparePassword(currentPassword, user.password);
+
+    if (!isMatch) {
+      throw new BusinessException(
+        ErrorCode.INVALID_CURRENT_PASSWORD,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const hashed = await hashPassword(newPassword);
+    await this.usersRepository.updatePassword(id, hashed);
+  }
+
+  setResetPasswordToken(
+    id: number,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    return this.usersRepository.setResetPasswordToken(id, token, expiresAt);
+  }
+
+  async resetPassword(id: number, newPassword: string): Promise<void> {
+    const hashed = await hashPassword(newPassword);
+    await this.usersRepository.resetPassword(id, hashed);
   }
 
   private async findExistingById(id: number): Promise<UserEntity> {

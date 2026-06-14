@@ -2,10 +2,10 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
-  Max,
   MaxLength,
   Min,
   MinLength,
@@ -13,6 +13,7 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Priority } from '@prisma/client';
 
 const toNumberArray = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') {
@@ -21,6 +22,15 @@ const toNumberArray = ({ value }: { value: unknown }) => {
 
   const values = Array.isArray(value) ? value : String(value).split(',');
   return values.map((item) => Number(item));
+};
+
+const toStringArray = ({ value }: { value: unknown }) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const values = Array.isArray(value) ? value : String(value).split(',');
+  return values.map((item) => String(item).trim());
 };
 
 export class CreateCardDto {
@@ -47,13 +57,10 @@ export class CreateCardDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: 2, minimum: 1, maximum: 3 })
+  @ApiPropertyOptional({ enum: Priority, example: Priority.MEDIUM })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(3)
-  priorityId?: number;
+  @IsEnum(Priority)
+  priority?: Priority;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -88,13 +95,17 @@ export class CreateCardDto {
 
   @ApiPropertyOptional({ example: '4.5' })
   @IsOptional()
-  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, {
+    message: 'Must be a valid number (e.g. 0.0)',
+  })
   @MaxLength(32)
   estimatedHours?: string;
 
   @ApiPropertyOptional({ example: '2.5' })
   @IsOptional()
-  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, {
+    message: 'Must be a valid number (e.g. 0.0)',
+  })
   @MaxLength(32)
   actualHours?: string;
 }
@@ -119,13 +130,10 @@ export class UpdateCardDto {
   @Min(1)
   columnId?: number;
 
-  @ApiPropertyOptional({ example: 3, minimum: 1, maximum: 3 })
+  @ApiPropertyOptional({ enum: Priority, example: Priority.HIGH })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(3)
-  priorityId?: number;
+  @IsEnum(Priority)
+  priority?: Priority;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -160,13 +168,17 @@ export class UpdateCardDto {
 
   @ApiPropertyOptional({ example: '5.5' })
   @IsOptional()
-  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, {
+    message: 'Must be a valid number (e.g. 0.0)',
+  })
   @MaxLength(32)
   estimatedHours?: string;
 
   @ApiPropertyOptional({ example: '3.5' })
   @IsOptional()
-  @Matches(/^[0-9]+([.,][0-9]*)?$/, { message: 'Must be a valid number (e.g. 0.0)' })
+  @Matches(/^[0-9]+([.,][0-9]*)?$/, {
+    message: 'Must be a valid number (e.g. 0.0)',
+  })
   @MaxLength(32)
   actualHours?: string;
 }
@@ -182,13 +194,12 @@ export class ListBoardCardsQueryDto {
   @IsString()
   cardCode?: string;
 
-  @ApiPropertyOptional({ example: '1,2' })
+  @ApiPropertyOptional({ enum: Priority, isArray: true, example: 'LOW,HIGH' })
   @IsOptional()
-  @Transform(toNumberArray)
+  @Transform(toStringArray)
   @IsArray()
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  priorityId?: number[];
+  @IsEnum(Priority, { each: true })
+  priority?: Priority[];
 
   @ApiPropertyOptional({ example: '1,2' })
   @IsOptional()

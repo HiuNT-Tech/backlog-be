@@ -67,7 +67,7 @@ export const boardCardSelect = {
   cardCode: true,
   title: true,
   description: true,
-  priorityId: true,
+  priority: true,
   assigneeUserId: true,
   position: true,
   createdAt: true,
@@ -78,8 +78,6 @@ type CreateBoardWithDefaultsParams = {
   dto: CreateBoardDto;
   userId: number;
 };
-
-
 
 @Injectable()
 export class BoardsRepository {
@@ -135,8 +133,6 @@ export class BoardsRepository {
       select: boardDetailSelect,
     });
   }
-
-
 
   findBoardCards(boardId: number, assigneeUserId?: number) {
     return this.prisma.card.findMany({
@@ -276,5 +272,33 @@ export class BoardsRepository {
     ]);
 
     return toPaginatedResponse(items, total);
+  }
+
+  findActiveMember(boardId: number, userId: number) {
+    return this.prisma.boardMember.findFirst({
+      where: { boardId, userId, deletedAt: null },
+      select: { id: true, role: true },
+    });
+  }
+
+  countActiveAdmins(boardId: number) {
+    return this.prisma.boardMember.count({
+      where: { boardId, role: BoardMemberRole.ADMIN, deletedAt: null },
+    });
+  }
+
+  updateMemberRole(memberId: number, role: BoardMemberRole) {
+    return this.prisma.boardMember.update({
+      where: { id: memberId },
+      data: { role },
+      select: { userId: true, role: true },
+    });
+  }
+
+  async softDeleteMember(memberId: number): Promise<void> {
+    await this.prisma.boardMember.update({
+      where: { id: memberId },
+      data: { deletedAt: new Date() },
+    });
   }
 }

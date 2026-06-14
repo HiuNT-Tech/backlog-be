@@ -10,6 +10,8 @@ export class UserEntity {
   phone: string | null;
   role: Role;
   verifyToken: string | null;
+  resetPasswordToken: string | null;
+  resetPasswordExpiresAt: Date | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

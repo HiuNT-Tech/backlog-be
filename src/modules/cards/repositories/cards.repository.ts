@@ -45,7 +45,7 @@ export const cardDetailSelect = {
   cardCode: true,
   title: true,
   description: true,
-  priorityId: true,
+  priority: true,
   assigneeUserId: true,
   assignee: { select: cardUserSelect },
   issueTypeId: true,
@@ -148,7 +148,7 @@ export class CardsRepository {
           cardCode: `${board.boardCode}-${cardNumber}`,
           title: dto.title,
           description: dto.description,
-          priorityId: dto.priorityId,
+          priority: dto.priority,
           assigneeUserId: dto.assigneeUserId,
           issueTypeId: dto.issueTypeId,
           versionId: dto.versionId,
@@ -183,9 +183,7 @@ export class CardsRepository {
             : {}),
           ...(dto.columnId !== undefined ? { columnId: dto.columnId } : {}),
           ...(nextPosition !== undefined ? { position: nextPosition } : {}),
-          ...(dto.priorityId !== undefined
-            ? { priorityId: dto.priorityId }
-            : {}),
+          ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
           ...(dto.assigneeUserId !== undefined
             ? { assigneeUserId: dto.assigneeUserId }
             : {}),
@@ -277,7 +275,9 @@ export class CardsRepository {
       ...(query.cardCode
         ? { cardCode: { startsWith: query.cardCode, mode: 'insensitive' } }
         : {}),
-      ...this.inFilter('priorityId', query.priorityId),
+      ...(query.priority && query.priority.length > 0
+        ? { priority: { in: query.priority } }
+        : {}),
       ...this.inFilter('issueTypeId', query.issueTypeId),
       ...this.inFilter('columnId', query.columnId),
       ...this.inFilter('assigneeUserId', query.assigneeUserId),

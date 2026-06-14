@@ -30,6 +30,10 @@ type UpdateUserData = Partial<
   Pick<UserEntity, 'displayName' | 'phone' | 'isActive'>
 >;
 
+type UpdateProfileData = Partial<
+  Pick<UserEntity, 'displayName' | 'avatar' | 'phone'>
+>;
+
 const ACTIVE_FILTER: Prisma.UserWhereInput = {
   isActive: true,
   deletedAt: null,
@@ -145,6 +149,58 @@ export class UsersRepository extends BasePrismaRepository<
     return this.toEntity(user);
   }
 
+  async updateProfile(
+    id: number,
+    data: UpdateProfileData,
+  ): Promise<UserEntity | null> {
+    const existing = await this.delegate.findFirst({
+      where: { id, ...ACTIVE_FILTER },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    const user = await this.delegate.update({
+      where: { id },
+      data: omitUndefined(data),
+    });
+
+    return this.toEntity(user);
+  }
+
+  async updatePassword(id: number, hashedPassword: string): Promise<void> {
+    await this.delegate.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+  }
+
+  async setResetPasswordToken(
+    id: number,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.delegate.update({
+      where: { id },
+      data: {
+        resetPasswordToken: token,
+        resetPasswordExpiresAt: expiresAt,
+      },
+    });
+  }
+
+  async resetPassword(id: number, hashedPassword: string): Promise<void> {
+    await this.delegate.update({
+      where: { id },
+      data: {
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpiresAt: null,
+      },
+    });
+  }
+
   async softDelete(id: number): Promise<UserEntity | null> {
     const existing = await this.delegate.findFirst({
       where: { id, ...ACTIVE_FILTER },
@@ -173,6 +229,8 @@ export class UsersRepository extends BasePrismaRepository<
       phone: user.phone,
       role: user.role as Role,
       verifyToken: user.verifyToken,
+      resetPasswordToken: user.resetPasswordToken,
+      resetPasswordExpiresAt: user.resetPasswordExpiresAt,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
