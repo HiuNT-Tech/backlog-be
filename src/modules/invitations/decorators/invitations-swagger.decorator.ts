@@ -4,11 +4,9 @@ import {
   ApiBadRequestResponse,
   ApiCookieAuth,
   ApiConflictResponse,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiGoneResponse,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -18,6 +16,11 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+  ApiListResponse,
+} from '@common/decorators/api-response.decorator';
 import { BoardInvitationStatus } from '@prisma/client';
 import { InvitationResponseDto } from '../dto/invitation-response.dto';
 
@@ -53,9 +56,8 @@ export function ApiCreateInvitationDocs() {
       description: 'Board id.',
     }),
     ...authDocs,
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(InvitationResponseDto, {
       description: 'Invitation created.',
-      type: InvitationResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid board id or invitation payload.',
@@ -102,10 +104,8 @@ export function ApiListBoardInvitationsDocs() {
         'Optional invitation status filter: PENDING, ACCEPTED, DECLINED, REVOKED, or EXPIRED.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiListResponse(InvitationResponseDto, {
       description: 'Board invitations.',
-      type: InvitationResponseDto,
-      isArray: true,
     }),
     ApiBadRequestResponse({
       description: 'Invalid board id or invitation status filter.',
@@ -141,9 +141,8 @@ export function ApiRevokeInvitationDocs() {
       description: 'Invitation id on the board.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(InvitationResponseDto, {
       description: 'Invitation revoked.',
-      type: InvitationResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid board id or invitation id.',
@@ -181,9 +180,8 @@ export function ApiGetInvitationByTokenDocs() {
       example: 'invitation-token',
       description: 'Invitation token from the email link.',
     }),
-    ApiOkResponse({
+    ApiItemResponse(InvitationResponseDto, {
       description: 'Invitation detail.',
-      type: InvitationResponseDto,
     }),
     ApiNotFoundResponse({
       description: 'Invitation not found.',
@@ -206,9 +204,8 @@ export function ApiAcceptInvitationDocs() {
       description: 'Invitation token from the email link.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(InvitationResponseDto, {
       description: 'Invitation accepted.',
-      type: InvitationResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Logged-in email does not match invitation email.',
@@ -242,9 +239,8 @@ export function ApiDeclineInvitationDocs() {
       description: 'Invitation token from the email link.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(InvitationResponseDto, {
       description: 'Invitation declined.',
-      type: InvitationResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Logged-in email does not match invitation email.',
@@ -273,10 +269,8 @@ export function ApiListMyInvitationsDocs() {
         'Return pending invitations for the logged-in user email or invitee user id.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiListResponse(InvitationResponseDto, {
       description: 'Current user pending invitations.',
-      type: InvitationResponseDto,
-      isArray: true,
     }),
     ApiNotFoundResponse({
       description: 'Current user not found.',

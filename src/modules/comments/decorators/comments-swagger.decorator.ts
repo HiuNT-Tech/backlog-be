@@ -3,7 +3,6 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -14,6 +13,10 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   CommentListResponseDto,
   CommentResponseDto,
@@ -76,9 +79,8 @@ export function ApiCreateCommentDocs() {
     }),
     cardIdParam,
     ...authDocs,
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(CommentResponseDto, {
       description: 'Comment created.',
-      type: CommentResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid comment payload.',
@@ -103,9 +105,8 @@ export function ApiUpdateCommentDocs() {
     }),
     commentIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(CommentResponseDto, {
       description: 'Comment updated.',
-      type: CommentResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid comment payload.',
@@ -130,9 +131,8 @@ export function ApiDeleteCommentDocs() {
     }),
     commentIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(DeleteCommentResponseDto, {
       description: 'Comment deleted.',
-      type: DeleteCommentResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Current user is not the comment author.',

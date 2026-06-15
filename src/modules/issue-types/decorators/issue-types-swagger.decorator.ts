@@ -4,7 +4,6 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -15,6 +14,10 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   DeleteIssueTypeResponseDto,
   IssueTypeResponseDto,
@@ -81,9 +84,8 @@ export function ApiCreateIssueTypeDocs() {
     }),
     boardIdParam,
     ...authDocs,
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(IssueTypeResponseDto, {
       description: 'Issue type created.',
-      type: IssueTypeResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid issue-type payload.',
@@ -113,9 +115,8 @@ export function ApiUpdateIssueTypeDocs() {
     boardIdParam,
     issueTypeIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(IssueTypeResponseDto, {
       description: 'Issue type updated.',
-      type: IssueTypeResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid issue-type payload.',
@@ -145,9 +146,8 @@ export function ApiDeleteIssueTypeDocs() {
     boardIdParam,
     issueTypeIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(DeleteIssueTypeResponseDto, {
       description: 'Issue type deleted.',
-      type: DeleteIssueTypeResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Current user is not ADMIN or PM on this board.',

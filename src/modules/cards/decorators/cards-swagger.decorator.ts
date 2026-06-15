@@ -3,7 +3,6 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -14,6 +13,10 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   BoardCardsResponseDto,
   CardResponseDto,
@@ -45,7 +48,7 @@ export function ApiCreateCardDocs() {
       description: 'Create a card in a board column.',
     }),
     ...authDocs,
-    ApiCreatedResponse({ description: 'Card created.', type: CardResponseDto }),
+    ApiItemCreatedResponse(CardResponseDto, { description: 'Card created.' }),
     ApiBadRequestResponse({
       description: 'Invalid card payload.',
       type: ApiErrorResponseDto,
@@ -69,7 +72,7 @@ export function ApiGetCardDocs() {
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ...authDocs,
-    ApiOkResponse({ description: 'Card detail.', type: CardResponseDto }),
+    ApiItemResponse(CardResponseDto, { description: 'Card detail.' }),
     ApiForbiddenResponse({
       description: 'Current user is not a board member.',
       type: ApiErrorResponseDto,
@@ -89,7 +92,7 @@ export function ApiUpdateCardDocs() {
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ...authDocs,
-    ApiOkResponse({ description: 'Card updated.', type: CardResponseDto }),
+    ApiItemResponse(CardResponseDto, { description: 'Card updated.' }),
     ApiBadRequestResponse({
       description: 'Invalid card payload.',
       type: ApiErrorResponseDto,
@@ -135,9 +138,8 @@ export function ApiMoveCardDocs() {
       description: 'Move a card between board columns and update positions.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(MoveCardResponseDto, {
       description: 'Card moved.',
-      type: MoveCardResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid move payload.',

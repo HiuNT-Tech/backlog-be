@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { setupSwagger } from './config/swagger.config';
 import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
 import { TimeoutInterceptor } from '@common/interceptors/timeout.interceptor';
+import { ResponseInterceptor } from '@common/interceptors/response.interceptor';
 import { FileLogger } from '@common/logger';
 import { AppEnv } from '@common/enums/app-env.enum';
 
@@ -57,7 +58,10 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(app.get(HttpExceptionFilter));
-  app.useGlobalInterceptors(app.get(TimeoutInterceptor));
+  app.useGlobalInterceptors(
+    app.get(TimeoutInterceptor),
+    new ResponseInterceptor(),
+  );
   setupSwagger(app, {
     enabled: nodeEnv !== AppEnv.Production,
   });

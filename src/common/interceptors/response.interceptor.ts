@@ -17,7 +17,9 @@ type ApiResponse<T> =
     ? PaginatedResponse<TItem>
     : T extends CountedResponse<infer TItem>
       ? CountedResponse<TItem>
-      : ItemResponse<T>;
+      : T extends Array<infer TItem>
+        ? PaginatedResponse<TItem>
+        : ItemResponse<T>;
 
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<
@@ -32,14 +34,25 @@ export class ResponseInterceptor<T> implements NestInterceptor<
   }
 
   private toResponse(data: T): ApiResponse<T> {
-    if (this.isPaginatedResponse(data)) {
+    // Preserve empty bodies (e.g. 204 No Content, void handlers) untouched.
+    if (data === null || data === undefined) {
       return data as ApiResponse<T>;
     }
 
-    if (this.isCountedResponse(data)) {
+    // Already-shaped list payloads pass through unchanged.
+    if (this.isPaginatedResponse(data) || this.isCountedResponse(data)) {
       return data as ApiResponse<T>;
     }
 
+    // Raw arrays are normalized into the paginated list envelope.
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        total: data.length,
+      } as unknown as ApiResponse<T>;
+    }
+
+    // Everything else is a single resource wrapped in the item envelope.
     return {
       item: data,
     } as ApiResponse<T>;

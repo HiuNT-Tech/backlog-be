@@ -16,12 +16,23 @@ describe('ResponseInterceptor', () => {
       await expect(run({ id: 1 })).resolves.toEqual({ item: { id: 1 } });
     });
 
-    it('should wrap null into { item: null }', async () => {
-      await expect(run(null)).resolves.toEqual({ item: null });
+    it('should leave null untouched (empty body for 204/void)', async () => {
+      await expect(run(null)).resolves.toBeNull();
+    });
+
+    it('should leave undefined untouched (empty body for 204/void)', async () => {
+      await expect(run(undefined)).resolves.toBeUndefined();
     });
 
     it('should wrap a primitive into { item }', async () => {
       await expect(run('hello')).resolves.toEqual({ item: 'hello' });
+    });
+
+    it('should normalize a raw array into { items, total }', async () => {
+      await expect(run([{ id: 1 }, { id: 2 }])).resolves.toEqual({
+        items: [{ id: 1 }, { id: 2 }],
+        total: 2,
+      });
     });
 
     it('should pass a paginated response { items, total } through unchanged', async () => {

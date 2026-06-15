@@ -3,7 +3,6 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -14,6 +13,10 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   DeleteVersionResponseDto,
   VersionResponseDto,
@@ -80,9 +83,8 @@ export function ApiCreateVersionDocs() {
     }),
     boardIdParam,
     ...authDocs,
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(VersionResponseDto, {
       description: 'Version created.',
-      type: VersionResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid version payload.',
@@ -108,9 +110,8 @@ export function ApiGetVersionDocs() {
     boardIdParam,
     versionIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(VersionResponseDto, {
       description: 'Version detail.',
-      type: VersionResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Current user is not a board member.',
@@ -132,9 +133,8 @@ export function ApiUpdateVersionDocs() {
     boardIdParam,
     versionIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(VersionResponseDto, {
       description: 'Version updated.',
-      type: VersionResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid version payload.',
@@ -160,9 +160,8 @@ export function ApiDeleteVersionDocs() {
     boardIdParam,
     versionIdParam,
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(DeleteVersionResponseDto, {
       description: 'Version deleted.',
-      type: DeleteVersionResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Current user is not ADMIN or PM on this board.',

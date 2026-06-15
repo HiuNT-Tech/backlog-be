@@ -3,10 +3,8 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -14,6 +12,11 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+  ApiListResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   ColumnResponseDto,
   DeleteColumnResponseDto,
@@ -44,10 +47,8 @@ export function ApiListColumnsDocs() {
       description: 'Return ordered active columns for a board.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiListResponse(ColumnResponseDto, {
       description: 'Board columns.',
-      type: ColumnResponseDto,
-      isArray: true,
     }),
     ApiBadRequestResponse({
       description: 'Invalid query.',
@@ -67,9 +68,8 @@ export function ApiCreateColumnDocs() {
       description: 'Create a new board column/status at the end of the board.',
     }),
     ...authDocs,
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(ColumnResponseDto, {
       description: 'Column created.',
-      type: ColumnResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid column payload.',
@@ -91,9 +91,8 @@ export function ApiUpdateColumnDocs() {
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(ColumnResponseDto, {
       description: 'Column updated.',
-      type: ColumnResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid column payload.',
@@ -119,9 +118,8 @@ export function ApiDeleteColumnDocs() {
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(DeleteColumnResponseDto, {
       description: 'Column and cards deleted.',
-      type: DeleteColumnResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Current user is not ADMIN or PM on this board.',

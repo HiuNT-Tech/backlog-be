@@ -167,7 +167,10 @@ export class CardsService {
     const card = await this.cardsRepository.findActiveBoardId(cardId);
 
     if (!card) {
-      throw new NotFoundException('Card not found');
+      throw new BusinessException(
+        ErrorCode.CARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     await this.boardAccessService.ensureMember(card.boardId, user.userId);

@@ -4,13 +4,13 @@ import {
   ApiBearerAuth,
   ApiCookieAuth,
   ApiNoContentResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import { ApiItemResponse } from '@common/decorators/api-response.decorator';
 import { UserResponseDto } from '@modules/users/dto/user-response.dto';
 
 const authDocs = [
@@ -38,9 +38,8 @@ export function ApiGetProfileDocs() {
       description: 'Return the profile of the currently authenticated user.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(UserResponseDto, {
       description: 'Current user profile.',
-      type: UserResponseDto,
     }),
   );
 }
@@ -52,9 +51,8 @@ export function ApiUpdateProfileDocs() {
       description: 'Update displayName, avatar, or phone of the current user.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(UserResponseDto, {
       description: 'Updated profile.',
-      type: UserResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid payload.',

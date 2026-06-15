@@ -4,7 +4,6 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -15,6 +14,11 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+  ApiListResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   BoardMemberResponseDto,
   BoardResponseDto,
@@ -47,9 +51,8 @@ export function ApiCreateBoardDocs() {
         'Create a board, assign current user as ADMIN, and create default columns.',
     }),
     ...authDocs,
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(BoardResponseDto, {
       description: 'Board created.',
-      type: BoardResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid board payload.',
@@ -69,10 +72,8 @@ export function ApiListBoardsDocs() {
       description: 'Return boards where the current user is an active member.',
     }),
     ...authDocs,
-    ApiOkResponse({
+    ApiListResponse(BoardResponseDto, {
       description: 'Boards visible to current user.',
-      type: BoardResponseDto,
-      isArray: true,
     }),
   );
 }
@@ -86,9 +87,8 @@ export function ApiGetBoardDocs() {
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(BoardResponseDto, {
       description: 'Board detail.',
-      type: BoardResponseDto,
     }),
     ApiNotFoundResponse({
       description: 'Board not found.',
@@ -110,9 +110,8 @@ export function ApiUpdateBoardDocs() {
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(BoardResponseDto, {
       description: 'Board updated.',
-      type: BoardResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid update payload.',
@@ -142,9 +141,8 @@ export function ApiUpdateMemberRoleDocs() {
     ApiParam({ name: 'id', type: Number, example: 1 }),
     ApiParam({ name: 'userId', type: Number, example: 2 }),
     ...authDocs,
-    ApiOkResponse({
+    ApiItemResponse(BoardMemberResponseDto, {
       description: 'Member role updated.',
-      type: BoardMemberResponseDto,
     }),
     ApiForbiddenResponse({
       description: 'Current user is not ADMIN or PM on this board.',

@@ -4,16 +4,18 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCookieAuth,
-  ApiCreatedResponse,
   ApiNotAcceptableResponse,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
+import {
+  ApiItemCreatedResponse,
+  ApiItemResponse,
+} from '@common/decorators/api-response.decorator';
 import {
   AuthUserResponseDto,
   LoginResponseDto,
@@ -33,9 +35,8 @@ export function ApiRegisterDocs() {
       description:
         'Create an inactive user account and send verification email.',
     }),
-    ApiCreatedResponse({
+    ApiItemCreatedResponse(AuthUserResponseDto, {
       description: 'User registered successfully.',
-      type: AuthUserResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid register payload.',
@@ -55,9 +56,8 @@ export function ApiLoginDocs() {
       description:
         'Authenticate an active user, set access/refresh token cookies, and return tokens.',
     }),
-    ApiOkResponse({
+    ApiItemResponse(LoginResponseDto, {
       description: 'Login successful.',
-      type: LoginResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid login payload.',
@@ -76,9 +76,8 @@ export function ApiVerifyAccountDocs() {
       summary: 'Verify account',
       description: 'Activate a registered account using email and token.',
     }),
-    ApiOkResponse({
+    ApiItemResponse(AuthUserResponseDto, {
       description: 'Account verified successfully.',
-      type: AuthUserResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid verify-account payload.',
@@ -103,9 +102,8 @@ export function ApiForgotPasswordDocs() {
         'Send a password reset link if an active account exists for the email. ' +
         'Always returns success to avoid leaking whether the email is registered.',
     }),
-    ApiOkResponse({
+    ApiItemResponse(MessageResponseDto, {
       description: 'Request accepted.',
-      type: MessageResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid payload.',
@@ -121,9 +119,8 @@ export function ApiResetPasswordDocs() {
       description:
         'Reset the account password using the emailed token, then revoke all sessions.',
     }),
-    ApiOkResponse({
+    ApiItemResponse(MessageResponseDto, {
       description: 'Password reset successfully.',
-      type: MessageResponseDto,
     }),
     ApiBadRequestResponse({
       description: 'Invalid payload.',
@@ -148,9 +145,8 @@ export function ApiLogoutDocs() {
         'Revoke refresh-token session if present and clear auth cookies.',
     }),
     ApiCookieAuth('refreshToken'),
-    ApiOkResponse({
+    ApiItemResponse(LogoutResponseDto, {
       description: 'Logout successful.',
-      type: LogoutResponseDto,
     }),
   );
 }
@@ -163,9 +159,8 @@ export function ApiRefreshTokenDocs() {
         'Rotate refresh token, set new access/refresh token cookies, and return tokens.',
     }),
     ApiCookieAuth('refreshToken'),
-    ApiOkResponse({
+    ApiItemResponse(RefreshTokenResponseDto, {
       description: 'Refresh token rotation successful.',
-      type: RefreshTokenResponseDto,
     }),
     ApiUnauthorizedResponse({
       description: 'Missing or invalid refresh token.',
@@ -183,9 +178,8 @@ export function ApiCurrentUserDocs() {
     }),
     ApiCookieAuth('accessToken'),
     ApiBearerAuth('bearer'),
-    ApiOkResponse({
+    ApiItemResponse(AuthUserResponseDto, {
       description: 'Current user.',
-      type: AuthUserResponseDto,
     }),
     ApiUnauthorizedResponse({
       description: 'Missing/invalid token or inactive user.',
