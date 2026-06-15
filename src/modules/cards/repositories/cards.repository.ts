@@ -100,6 +100,13 @@ export class CardsRepository {
     });
   }
 
+  findActiveBoardId(id: number) {
+    return this.prisma.card.findFirst({
+      where: { id, deletedAt: null },
+      select: { boardId: true },
+    });
+  }
+
   async findByBoard(boardId: number, query: ListBoardCardsQueryDto) {
     const where = this.buildBoardCardsWhere(boardId, query);
     const skip = Math.max(query.skip ?? 0, 0);
