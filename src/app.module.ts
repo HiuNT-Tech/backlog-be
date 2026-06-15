@@ -14,6 +14,7 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { BoardsModule } from '@modules/boards/boards.module';
 import { CardsModule } from '@modules/cards/cards.module';
 import { ColumnsModule } from '@modules/columns/columns.module';
+import { CommentsModule } from '@modules/comments/comments.module';
 import { HealthModule } from '@modules/health/health.module';
 import { InvitationsModule } from '@modules/invitations/invitations.module';
 import { IssueTypesModule } from '@modules/issue-types/issue-types.module';
@@ -48,6 +49,7 @@ import { AppController } from './app.controller';
     CardsModule,
     ColumnsModule,
     InvitationsModule,
+    CommentsModule,
     IssueTypesModule,
     MeModule,
     UsersModule,

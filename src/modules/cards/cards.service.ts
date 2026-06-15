@@ -155,6 +155,26 @@ export class CardsService {
     return { updateResult: 'Successfully!' };
   }
 
+  /**
+   * Ensure the card exists and the user is a member of its board.
+   * Returns the card's boardId. Exposed for other modules (e.g. comments)
+   * that operate on card sub-resources.
+   */
+  async ensureCardAccessible(
+    user: JwtPayload,
+    cardId: number,
+  ): Promise<number> {
+    const card = await this.cardsRepository.findActiveBoardId(cardId);
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    await this.boardAccessService.ensureMember(card.boardId, user.userId);
+
+    return card.boardId;
+  }
+
   private async ensureCardVisibleToUser(
     user: JwtPayload,
     cardId: number,

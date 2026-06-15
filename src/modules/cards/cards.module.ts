@@ -10,5 +10,6 @@ import { CardsRepository } from './repositories/cards.repository';
   imports: [BoardsModule, IssueTypesModule, VersionsModule],
   controllers: [CardsController],
   providers: [CardsService, CardsRepository],
+  exports: [CardsService],
 })
 export class CardsModule {}
