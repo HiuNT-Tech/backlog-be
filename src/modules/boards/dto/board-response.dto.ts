@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BoardMemberRole, BoardType, Priority } from '@prisma/client';
+import { BoardMemberRole, BoardType } from '@prisma/client';
 import { StatusColor } from '@common/types';
 
 export class BoardMemberResponseDto {
@@ -33,11 +33,11 @@ export class BoardCardResponseDto {
   description: string | null;
 
   @ApiPropertyOptional({
-    enum: Priority,
+    example: 2,
     nullable: true,
-    example: Priority.MEDIUM,
+    description: 'Priority: 1=LOW, 2=MEDIUM, 3=HIGH',
   })
-  priority: Priority | null;
+  priority: number | null;
 
   @ApiPropertyOptional({ type: Number, nullable: true, example: 1 })
   assigneeUserId: number | null;

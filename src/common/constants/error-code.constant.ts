@@ -78,5 +78,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'Invitation email does not match current user',
   [ErrorCode.INVITATION_ALREADY_PENDING]:
     'A pending invitation already exists for this board and email',
+  [ErrorCode.INVITATION_INVALID_OR_EXPIRED]:
+    'Invitation is invalid or has expired',
   [ErrorCode.USER_ALREADY_MEMBER]: 'User is already a board member',
 };

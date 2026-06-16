@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Priority } from '@prisma/client';
 import { StatusColor } from '@common/types';
 
 export class CardUserResponseDto {
@@ -80,8 +79,8 @@ export class CardResponseDto {
   @ApiPropertyOptional({ example: '' })
   description?: string | null;
 
-  @ApiPropertyOptional({ enum: Priority, example: Priority.MEDIUM })
-  priority?: Priority | null;
+  @ApiPropertyOptional({ example: 2, description: 'Priority: 1=LOW, 2=MEDIUM, 3=HIGH' })
+  priority?: number | null;
 
   @ApiPropertyOptional({ example: 1 })
   assigneeUserId?: number | null;

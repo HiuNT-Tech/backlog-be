@@ -274,13 +274,6 @@ export class BoardsRepository {
     return toPaginatedResponse(items, total);
   }
 
-  findActiveMember(boardId: number, userId: number) {
-    return this.prisma.boardMember.findFirst({
-      where: { boardId, userId, deletedAt: null },
-      select: { id: true, role: true },
-    });
-  }
-
   countActiveAdmins(boardId: number) {
     return this.prisma.boardMember.count({
       where: { boardId, role: BoardMemberRole.ADMIN, deletedAt: null },

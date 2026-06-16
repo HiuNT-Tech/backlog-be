@@ -32,13 +32,6 @@ enum BoardInvitationStatus {
   EXPIRED
 }
 
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
 enum StatusColor {
   RED
   ORANGE
@@ -228,7 +221,7 @@ model Card {
   cardCode           String    @unique(map: "uq_cards_card_code") @map("card_code") @db.VarChar(40)
   title              String    @db.VarChar(50)
   description        String?   @db.Text
-  priority           Priority? @map("priority")
+  priority           Int?      @map("priority")
   assigneeUserId     Int?      @map("assignee_user_id")
   registeredByUserId Int?      @map("registered_by_user_id")
   createdByUserId    Int?      @map("created_by_user_id")
