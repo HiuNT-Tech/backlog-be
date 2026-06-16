@@ -47,6 +47,9 @@ export class CommentsService {
     cardId: number,
     query: ListCommentsQueryDto,
   ): Promise<CommentListResponseDto> {
+    console.log('user: ', user);
+    console.log('cardId: ', cardId);
+    console.log('query: ', query);
     await this.cardsService.ensureCardAccessible(user, cardId);
     const result = await this.commentsRepository.findByCard(cardId, query);
 

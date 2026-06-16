@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { BoardMemberRole, Prisma } from '@prisma/client';
+import { BoardMembersService } from '@modules/board-members/board-members.service';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardAccessService } from './board-access.service';
 import {
@@ -38,6 +39,7 @@ export class BoardsService {
   constructor(
     private readonly boardsRepository: BoardsRepository,
     private readonly boardAccessService: BoardAccessService,
+    private readonly boardMembersService: BoardMembersService,
   ) {}
 
   async create(
@@ -286,7 +288,7 @@ export class BoardsService {
   }
 
   private async ensureBoardMember(boardId: number, targetUserId: number) {
-    const member = await this.boardsRepository.findActiveMember(
+    const member = await this.boardMembersService.getActiveMember(
       boardId,
       targetUserId,
     );

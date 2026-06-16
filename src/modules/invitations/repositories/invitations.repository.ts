@@ -63,6 +63,30 @@ export class InvitationsRepository {
     });
   }
 
+  delete(invitationId: number): Promise<InvitationRecord | null> {
+    return this.prisma.boardInvitation.update({
+      where: { id: invitationId },
+      data: { deletedAt: new Date() },
+      select: invitationSelect,
+    });
+  }
+
+  update(
+    invitationId: number,
+    data: Partial<
+      Omit<
+        CreateInvitationData,
+        'id' | 'boardId' | 'invitedByUserId' | 'createdAt' | 'updatedAt'
+      >
+    >,
+  ): Promise<InvitationRecord | null> {
+    return this.prisma.boardInvitation.update({
+      where: { id: invitationId },
+      data,
+      select: invitationSelect,
+    });
+  }
+
   findByBoard(
     boardId: number,
     status?: BoardInvitationStatus,
@@ -92,6 +116,13 @@ export class InvitationsRepository {
     });
   }
 
+  findById(invitationId: number): Promise<InvitationRecord | null> {
+    return this.prisma.boardInvitation.findUnique({
+      where: { id: invitationId },
+      select: invitationSelect,
+    });
+  }
+
   findByToken(token: string): Promise<InvitationRecord | null> {
     return this.prisma.boardInvitation.findFirst({
       where: {
@@ -115,31 +146,6 @@ export class InvitationsRepository {
       },
       orderBy: { createdAt: 'desc' },
       select: invitationSelect,
-    });
-  }
-
-  findActiveMember(boardId: number, userId: number) {
-    return this.prisma.boardMember.findFirst({
-      where: {
-        boardId,
-        userId,
-        deletedAt: null,
-      },
-      select: { id: true },
-    });
-  }
-
-  findActiveMemberByEmail(boardId: number, email: string) {
-    return this.prisma.boardMember.findFirst({
-      where: {
-        boardId,
-        deletedAt: null,
-        user: {
-          email,
-          deletedAt: null,
-        },
-      },
-      select: { id: true },
     });
   }
 

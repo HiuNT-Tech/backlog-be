@@ -195,7 +195,7 @@ export function ApiAcceptInvitationDocs() {
     ApiOperation({
       summary: 'Accept invitation',
       description:
-        'Accept a pending invitation for the logged-in user email and create or restore the board membership.',
+        'Accept a pending invitation for the logged-in user and create or restore the board membership.',
     }),
     ApiParam({
       name: 'token',
@@ -207,20 +207,18 @@ export function ApiAcceptInvitationDocs() {
     ApiItemResponse(InvitationResponseDto, {
       description: 'Invitation accepted.',
     }),
+    ApiBadRequestResponse({
+      description:
+        'Email-only invitation whose email does not match the logged-in user.',
+      type: ApiErrorResponseDto,
+    }),
     ApiForbiddenResponse({
-      description: 'Logged-in email does not match invitation email.',
+      description:
+        'Invitation is no longer pending (already responded or revoked) or has expired.',
       type: ApiErrorResponseDto,
     }),
     ApiNotFoundResponse({
-      description: 'Invitation not found.',
-      type: ApiErrorResponseDto,
-    }),
-    ApiConflictResponse({
-      description: 'Invitation already responded or user already member.',
-      type: ApiErrorResponseDto,
-    }),
-    ApiGoneResponse({
-      description: 'Access token or invitation expired.',
+      description: 'Invitation not found, or it belongs to another user.',
       type: ApiErrorResponseDto,
     }),
   );

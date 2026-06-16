@@ -2,7 +2,6 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
-  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -13,7 +12,6 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Priority } from '@prisma/client';
 
 const toNumberArray = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') {
@@ -57,10 +55,12 @@ export class CreateCardDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ enum: Priority, example: Priority.MEDIUM })
+  @ApiPropertyOptional({ example: 2, description: 'Priority: 1=LOW, 2=MEDIUM, 3=HIGH' })
   @IsOptional()
-  @IsEnum(Priority)
-  priority?: Priority;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  priority?: number;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -130,10 +130,12 @@ export class UpdateCardDto {
   @Min(1)
   columnId?: number;
 
-  @ApiPropertyOptional({ enum: Priority, example: Priority.HIGH })
+  @ApiPropertyOptional({ example: 3, description: 'Priority: 1=LOW, 2=MEDIUM, 3=HIGH' })
   @IsOptional()
-  @IsEnum(Priority)
-  priority?: Priority;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  priority?: number;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -194,12 +196,13 @@ export class ListBoardCardsQueryDto {
   @IsString()
   cardCode?: string;
 
-  @ApiPropertyOptional({ enum: Priority, isArray: true, example: 'LOW,HIGH' })
+  @ApiPropertyOptional({ example: '1,3', description: 'Priority: 1=LOW, 2=MEDIUM, 3=HIGH' })
   @IsOptional()
-  @Transform(toStringArray)
+  @Transform(toNumberArray)
   @IsArray()
-  @IsEnum(Priority, { each: true })
-  priority?: Priority[];
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  priority?: number[];
 
   @ApiPropertyOptional({ example: '1,2' })
   @IsOptional()
