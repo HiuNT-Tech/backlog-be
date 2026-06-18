@@ -1,8 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { BoardMemberRole } from '@prisma/client';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 import { JwtPayload } from '@/types/jwt-payload.type';
-import { BoardAccessService } from '@modules/boards/board-access.service';
+import {
+  BOARD_CONTRIBUTOR_ROLES,
+  BoardAccessService,
+} from '@modules/boards/board-access.service';
 import { IssueTypesService } from '@modules/issue-types/issue-types.service';
 import { VersionsService } from '@modules/versions/versions.service';
 import {
@@ -36,7 +40,11 @@ export class CardsService {
   ) {}
 
   async create(user: JwtPayload, dto: CreateCardDto): Promise<CardResponseDto> {
-    await this.boardAccessService.ensureMember(dto.boardId, user.userId);
+    await this.boardAccessService.ensureRole(
+      dto.boardId,
+      user.userId,
+      BOARD_CONTRIBUTOR_ROLES,
+    );
     await this.ensureColumnBelongsToBoard(dto.boardId, dto.columnId);
     this.ensureDateRangeValid(dto.startDate, dto.dueDate);
 
@@ -72,7 +80,11 @@ export class CardsService {
     id: number,
     dto: UpdateCardDto,
   ): Promise<CardResponseDto> {
-    const card = await this.ensureCardVisibleToUser(user, id);
+    const card = await this.ensureCardVisibleToUser(
+      user,
+      id,
+      BOARD_CONTRIBUTOR_ROLES,
+    );
     const nextColumnId = dto.columnId ?? card.columnId;
     await this.ensureColumnBelongsToBoard(card.boardId, nextColumnId);
     this.ensureDateRangeValid(
@@ -122,7 +134,11 @@ export class CardsService {
   }
 
   async move(user: JwtPayload, dto: MoveCardDto): Promise<MoveCardResponseDto> {
-    const card = await this.ensureCardVisibleToUser(user, dto.currentCardId);
+    const card = await this.ensureCardVisibleToUser(
+      user,
+      dto.currentCardId,
+      BOARD_CONTRIBUTOR_ROLES,
+    );
     const [prevColumn, nextColumn] = await Promise.all([
       this.cardsRepository.findActiveColumnWithBoard(dto.prevColumnId),
       this.cardsRepository.findActiveColumnWithBoard(dto.nextColumnId),
@@ -156,13 +172,17 @@ export class CardsService {
   }
 
   /**
-   * Ensure the card exists and the user is a member of its board.
+   * Ensure the card exists and the user can access its board.
    * Returns the card's boardId. Exposed for other modules (e.g. comments)
    * that operate on card sub-resources.
+   *
+   * Pass `roles` to require a specific board role (e.g. for write operations
+   * that GUEST must not perform); omit it for read access (any member).
    */
   async ensureCardAccessible(
     user: JwtPayload,
     cardId: number,
+    roles?: BoardMemberRole[],
   ): Promise<number> {
     const card = await this.cardsRepository.findActiveBoardId(cardId);
 
@@ -173,7 +193,7 @@ export class CardsService {
       );
     }
 
-    await this.boardAccessService.ensureMember(card.boardId, user.userId);
+    await this.ensureBoardAccess(card.boardId, user.userId, roles);
 
     return card.boardId;
   }
@@ -181,6 +201,7 @@ export class CardsService {
   private async ensureCardVisibleToUser(
     user: JwtPayload,
     cardId: number,
+    roles?: BoardMemberRole[],
   ): Promise<CardRecord> {
     const card = await this.cardsRepository.findActiveById(cardId);
 
@@ -191,9 +212,21 @@ export class CardsService {
       );
     }
 
-    await this.boardAccessService.ensureMember(card.boardId, user.userId);
+    await this.ensureBoardAccess(card.boardId, user.userId, roles);
 
     return card;
+  }
+
+  private async ensureBoardAccess(
+    boardId: number,
+    userId: number,
+    roles?: BoardMemberRole[],
+  ): Promise<void> {
+    if (roles) {
+      await this.boardAccessService.ensureRole(boardId, userId, roles);
+    } else {
+      await this.boardAccessService.ensureMember(boardId, userId);
+    }
   }
 
   private async ensureColumnBelongsToBoard(

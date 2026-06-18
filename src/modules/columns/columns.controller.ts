@@ -8,8 +8,15 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { BOARD_MANAGER_ROLES } from '@modules/boards/board-access.service';
+import {
+  BoardMember,
+  BoardRoles,
+} from '@modules/boards/decorators/board-roles.decorator';
+import { BoardRolesGuard } from '@modules/boards/guards/board-roles.guard';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import {
   ApiColumnsControllerDocs,
@@ -26,11 +33,13 @@ import {
 import { ColumnsService } from './columns.service';
 
 @ApiColumnsControllerDocs()
+@UseGuards(BoardRolesGuard)
 @Controller('boards/:id/columns')
 export class ColumnsController {
   constructor(private readonly columnsService: ColumnsService) {}
 
   @ApiListColumnsDocs()
+  @BoardMember()
   @Get()
   findAll(
     @CurrentUser() user: JwtPayload,
@@ -41,6 +50,7 @@ export class ColumnsController {
   }
 
   @ApiCreateColumnDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Post()
   create(
     @CurrentUser() user: JwtPayload,
@@ -51,6 +61,7 @@ export class ColumnsController {
   }
 
   @ApiUpdateColumnDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Put(':columnId')
   update(
     @CurrentUser() user: JwtPayload,
@@ -62,6 +73,7 @@ export class ColumnsController {
   }
 
   @ApiDeleteColumnDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Delete(':columnId')
   remove(
     @CurrentUser() user: JwtPayload,

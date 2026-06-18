@@ -32,8 +32,6 @@ type BoardCard = Awaited<
   ReturnType<BoardsRepository['findBoardCards']>
 >[number];
 
-const boardManagerRoles = [BoardMemberRole.ADMIN, BoardMemberRole.PM];
-
 @Injectable()
 export class BoardsService {
   constructor(
@@ -74,7 +72,6 @@ export class BoardsService {
     boardId: number,
     query: GetBoardDetailQueryDto,
   ): Promise<BoardResponseDto> {
-    await this.boardAccessService.ensureMember(boardId, user.userId);
     const board = await this.boardsRepository.findBoardDetail(boardId);
 
     if (!board) {
@@ -137,12 +134,6 @@ export class BoardsService {
     boardId: number,
     dto: UpdateBoardDto,
   ): Promise<BoardResponseDto> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
-
     const existingBoard = await this.boardsRepository.findBoardById(boardId);
 
     if (!existingBoard) {
@@ -212,7 +203,6 @@ export class BoardsService {
     boardId: number,
     query: GetBoardUsersQueryDto,
   ): Promise<BoardUsersResponseDto> {
-    await this.boardAccessService.ensureMember(boardId, user.userId);
     const result = await this.boardsRepository.findBoardUsers(boardId, query);
 
     return {
@@ -240,12 +230,6 @@ export class BoardsService {
     targetUserId: number,
     dto: UpdateMemberRoleDto,
   ): Promise<BoardMemberResponseDto> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
-
     const member = await this.ensureBoardMember(boardId, targetUserId);
 
     if (member.role === dto.role) {
@@ -272,12 +256,6 @@ export class BoardsService {
     boardId: number,
     targetUserId: number,
   ): Promise<void> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
-
     const member = await this.ensureBoardMember(boardId, targetUserId);
 
     if (member.role === BoardMemberRole.ADMIN) {

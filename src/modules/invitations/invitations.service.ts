@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BoardMemberRole, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 import { generateRandomToken } from '@common/utils/crypto.util';
@@ -12,7 +12,6 @@ import {
 import { EMAIL_PROVIDER, EmailProvider } from '@/providers/brevo.provider';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardMembersService } from '@modules/board-members/board-members.service';
-import { BoardAccessService } from '@modules/boards/board-access.service';
 import { BoardsService } from '@modules/boards/boards.service';
 import { UsersService } from '@modules/users/users.service';
 import {
@@ -26,14 +25,12 @@ import {
 } from './repositories/invitations.repository';
 import { InvitationStatus } from '@common/enums/invitation.enum';
 
-const boardManagerRoles = [BoardMemberRole.ADMIN, BoardMemberRole.PM];
 const invitationTtlMs = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class InvitationsService {
   constructor(
     private readonly invitationsRepository: InvitationsRepository,
-    private readonly boardAccessService: BoardAccessService,
     private readonly boardMembersService: BoardMembersService,
     private readonly boardsService: BoardsService,
     private readonly usersService: UsersService,
@@ -47,12 +44,6 @@ export class InvitationsService {
     boardId: number,
     dto: CreateInvitationDto,
   ): Promise<InvitationResponseDto> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
-
     const [board, inviter] = await Promise.all([
       this.boardsService.findById(boardId),
       this.usersService.findByIdForAuth(user.userId),
@@ -114,11 +105,6 @@ export class InvitationsService {
     boardId: number,
     query: ListBoardInvitationsQueryDto,
   ): Promise<InvitationResponseDto[]> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     await this.invitationsRepository.expirePendingForBoard(boardId);
 
     const invitations = await this.invitationsRepository.findByBoard(
@@ -143,11 +129,6 @@ export class InvitationsService {
         HttpStatus.NOT_FOUND,
       );
     }
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
 
     const invitation = await this.invitationsRepository.findById(invitationId);
     if (!invitation) {
@@ -163,13 +144,8 @@ export class InvitationsService {
   }
 
   async findByToken(token: string): Promise<InvitationResponseDto> {
-    const invitation = await this.invitationsRepository.findByToken(token);
-    if (!invitation) {
-      throw new BusinessException(
-        ErrorCode.INVITATION_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    const invitation = await this.existedInvitation(token);
+
     const board = await this.boardsService.findById(invitation.boardId);
     if (!board) {
       throw new BusinessException(
@@ -184,30 +160,10 @@ export class InvitationsService {
     user: JwtPayload,
     token: string,
   ): Promise<InvitationResponseDto> {
-    const invitation = await this.invitationsRepository.findByToken(token);
-    if (!invitation) {
-      throw new BusinessException(
-        ErrorCode.INVITATION_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    const invitation = await this.existedInvitation(token);
 
     this.ensureInvitationBelongsToUser(invitation, user);
-
-    if (invitation.status !== InvitationStatus.PENDING) {
-      throw new BusinessException(
-        ErrorCode.INVITATION_INVALID_OR_EXPIRED,
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    if (invitation.expiresAt < new Date()) {
-      await this.invitationsRepository.markExpired(invitation.id);
-      throw new BusinessException(
-        ErrorCode.INVITATION_INVALID_OR_EXPIRED,
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    await this.ensureInvitationStatusValid(invitation);
 
     const accepted = await this.invitationsRepository.accept(
       invitation,
@@ -228,7 +184,6 @@ export class InvitationsService {
     invitation: InvitationRecord,
     user: JwtPayload,
   ): void {
-    // Invitation already bound to a registered user: the acceptor must be them.
     if (invitation.inviteeUserId !== null) {
       if (invitation.inviteeUserId !== user.userId) {
         throw new BusinessException(
@@ -251,13 +206,36 @@ export class InvitationsService {
     user: JwtPayload,
     token: string,
   ): Promise<InvitationResponseDto> {
-    // TODO
-    throw new Error('Not implemented');
+    const invitation = await this.existedInvitation(token);
+
+    this.ensureInvitationBelongsToUser(invitation, user);
+    await this.ensureInvitationStatusValid(invitation);
+
+    const declined = await this.invitationsRepository.decline(invitation.id);
+    if (!declined) {
+      throw new BusinessException(
+        ErrorCode.INVITATION_INVALID_OR_EXPIRED,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return this.toInvitationResponse(declined);
   }
 
   async listMine(user: JwtPayload): Promise<InvitationResponseDto[]> {
-    // TODO
-    throw new Error('Not implemented');
+    await this.invitationsRepository.expirePendingForUser(
+      user.userId,
+      user.email,
+    );
+
+    const invitations = await this.invitationsRepository.findPendingForUser(
+      user.userId,
+      user.email,
+    );
+
+    return invitations.map((invitation) =>
+      this.toInvitationResponse(invitation),
+    );
   }
 
   async bindPendingByEmail(user: {
@@ -265,8 +243,14 @@ export class InvitationsService {
     email: string;
     isActive: boolean;
   }): Promise<number> {
-    // TODO
-    throw new Error('Not implemented');
+    if (!user.isActive) {
+      return 0;
+    }
+
+    return this.invitationsRepository.bindPendingByEmail(
+      user.email,
+      user.id,
+    );
   }
 
   private async ensureEmailIsNotActiveMember(
@@ -282,6 +266,34 @@ export class InvitationsService {
       throw new BusinessException(
         ErrorCode.USER_ALREADY_MEMBER,
         HttpStatus.CONFLICT,
+      );
+    }
+  }
+
+  private async existedInvitation(token: string): Promise<InvitationRecord> {
+    const invitation = await this.invitationsRepository.findByToken(token);
+    if (!invitation) {
+      throw new BusinessException(
+        ErrorCode.INVITATION_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return invitation;
+  }
+
+  private async ensureInvitationStatusValid(invitation: InvitationRecord) {
+    if (invitation.status !== InvitationStatus.PENDING) {
+      throw new BusinessException(
+        ErrorCode.INVITATION_INVALID_OR_EXPIRED,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (invitation.expiresAt < new Date()) {
+      await this.invitationsRepository.markExpired(invitation.id);
+      throw new BusinessException(
+        ErrorCode.INVITATION_INVALID_OR_EXPIRED,
+        HttpStatus.FORBIDDEN,
       );
     }
   }

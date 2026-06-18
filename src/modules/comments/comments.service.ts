@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtPayload } from '@/types/jwt-payload.type';
+import { BOARD_CONTRIBUTOR_ROLES } from '@modules/boards/board-access.service';
 import { CardsService } from '@modules/cards/cards.service';
 import {
   CreateCommentDto,
@@ -33,7 +34,11 @@ export class CommentsService {
     cardId: number,
     dto: CreateCommentDto,
   ): Promise<CommentResponseDto> {
-    await this.cardsService.ensureCardAccessible(user, cardId);
+    await this.cardsService.ensureCardAccessible(
+      user,
+      cardId,
+      BOARD_CONTRIBUTOR_ROLES,
+    );
     const comment = await this.commentsRepository.create(
       cardId,
       user.userId,
@@ -47,9 +52,6 @@ export class CommentsService {
     cardId: number,
     query: ListCommentsQueryDto,
   ): Promise<CommentListResponseDto> {
-    console.log('user: ', user);
-    console.log('cardId: ', cardId);
-    console.log('query: ', query);
     await this.cardsService.ensureCardAccessible(user, cardId);
     const result = await this.commentsRepository.findByCard(cardId, query);
 
