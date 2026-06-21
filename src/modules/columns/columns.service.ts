@@ -1,9 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
-import { BoardMemberRole } from '@prisma/client';
 import { JwtPayload } from '@/types/jwt-payload.type';
-import { BoardAccessService } from '@modules/boards/board-access.service';
 import {
   CreateColumnDto,
   ListColumnsQueryDto,
@@ -22,21 +20,15 @@ type ColumnListItem = Awaited<
   ReturnType<ColumnsRepository['findByBoardId']>
 >[number];
 
-const boardManagerRoles = [BoardMemberRole.ADMIN, BoardMemberRole.PM];
-
 @Injectable()
 export class ColumnsService {
-  constructor(
-    private readonly columnsRepository: ColumnsRepository,
-    private readonly boardAccessService: BoardAccessService,
-  ) {}
+  constructor(private readonly columnsRepository: ColumnsRepository) {}
 
   async findAll(
     user: JwtPayload,
     boardId: number,
     query: ListColumnsQueryDto,
   ): Promise<ColumnResponseDto[]> {
-    await this.boardAccessService.ensureMember(boardId, user.userId);
     const columns = await this.columnsRepository.findByBoardId(boardId);
     return columns.map((column) => this.toColumnResponse(column));
   }
@@ -46,11 +38,6 @@ export class ColumnsService {
     boardId: number,
     dto: CreateColumnDto,
   ): Promise<ColumnResponseDto> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     const column = await this.columnsRepository.create(boardId, dto);
 
     return {
@@ -65,12 +52,7 @@ export class ColumnsService {
     columnId: number,
     dto: UpdateColumnDto,
   ): Promise<ColumnResponseDto> {
-    const column = await this.ensureColumnBelongsToBoard(boardId, columnId);
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
+    await this.ensureColumnBelongsToBoard(boardId, columnId);
 
     if (dto.cards) {
       await this.ensureCardsBelongToColumn(columnId, dto.cards);
@@ -93,12 +75,7 @@ export class ColumnsService {
     boardId: number,
     columnId: number,
   ): Promise<DeleteColumnResponseDto> {
-    const column = await this.ensureColumnBelongsToBoard(boardId, columnId);
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
+    await this.ensureColumnBelongsToBoard(boardId, columnId);
     await this.columnsRepository.softDeleteWithCards(columnId, boardId);
 
     return {

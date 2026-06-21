@@ -4,6 +4,22 @@ import { PrismaService } from '@database/prisma/prisma.service';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 
+/** Roles allowed to manage a board (mutations on board sub-resources). */
+export const BOARD_MANAGER_ROLES: BoardMemberRole[] = [
+  BoardMemberRole.ADMIN,
+  BoardMemberRole.PM,
+];
+
+/**
+ * Roles allowed to contribute content (cards, comments). Everyone except
+ * GUEST, who has read-only access to the board.
+ */
+export const BOARD_CONTRIBUTOR_ROLES: BoardMemberRole[] = [
+  BoardMemberRole.ADMIN,
+  BoardMemberRole.PM,
+  BoardMemberRole.MEMBER,
+];
+
 @Injectable()
 export class BoardAccessService {
   constructor(private readonly prisma: PrismaService) {}

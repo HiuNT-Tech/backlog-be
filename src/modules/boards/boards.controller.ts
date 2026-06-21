@@ -11,9 +11,13 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { JwtPayload } from '@/types/jwt-payload.type';
+import { BOARD_MANAGER_ROLES } from './board-access.service';
+import { BoardMember, BoardRoles } from './decorators/board-roles.decorator';
+import { BoardRolesGuard } from './guards/board-roles.guard';
 import {
   ApiBoardsControllerDocs,
   ApiCreateBoardDocs,
@@ -34,6 +38,7 @@ import {
 import { BoardsService } from './boards.service';
 
 @ApiBoardsControllerDocs()
+@UseGuards(BoardRolesGuard)
 @Controller('boards')
 export class BoardsController {
   constructor(private readonly boardsService: BoardsService) {}
@@ -52,6 +57,7 @@ export class BoardsController {
   }
 
   @ApiGetBoardDocs()
+  @BoardMember()
   @Get(':id')
   findOne(
     @CurrentUser() user: JwtPayload,
@@ -62,6 +68,7 @@ export class BoardsController {
   }
 
   @ApiUpdateBoardDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Put(':id')
   update(
     @CurrentUser() user: JwtPayload,
@@ -72,6 +79,7 @@ export class BoardsController {
   }
 
   @ApiGetBoardUsersDocs()
+  @BoardMember()
   @Get(':id/usersBoard')
   findUsers(
     @CurrentUser() user: JwtPayload,
@@ -82,6 +90,7 @@ export class BoardsController {
   }
 
   @ApiUpdateMemberRoleDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Patch(':id/members/:userId')
   updateMemberRole(
     @CurrentUser() user: JwtPayload,
@@ -93,6 +102,7 @@ export class BoardsController {
   }
 
   @ApiRemoveMemberDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @HttpCode(HttpStatus.OK)
   @Delete(':id/members/:userId')
   removeMember(

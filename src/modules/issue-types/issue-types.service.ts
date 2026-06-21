@@ -1,10 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
-import { BoardMemberRole, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { CountedResponse } from '@common/dto/response.dto';
 import { JwtPayload } from '@/types/jwt-payload.type';
-import { BoardAccessService } from '@modules/boards/board-access.service';
 import {
   CreateIssueTypeDto,
   ListIssueTypesQueryDto,
@@ -23,21 +22,15 @@ type IssueTypeListItem = Awaited<
   ReturnType<IssueTypesRepository['findByBoard']>
 >['items'][number];
 
-const boardManagerRoles = [BoardMemberRole.ADMIN, BoardMemberRole.PM];
-
 @Injectable()
 export class IssueTypesService {
-  constructor(
-    private readonly issueTypesRepository: IssueTypesRepository,
-    private readonly boardAccessService: BoardAccessService,
-  ) {}
+  constructor(private readonly issueTypesRepository: IssueTypesRepository) {}
 
   async findAll(
     user: JwtPayload,
     boardId: number,
     query: ListIssueTypesQueryDto,
   ): Promise<CountedResponse<IssueTypeResponseDto>> {
-    await this.boardAccessService.ensureMember(boardId, user.userId);
     const result = await this.issueTypesRepository.findByBoard(boardId, query);
 
     return {
@@ -51,11 +44,6 @@ export class IssueTypesService {
     boardId: number,
     dto: CreateIssueTypeDto,
   ): Promise<IssueTypeResponseDto> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     await this.ensureNameAvailable(boardId, dto.name);
 
     const issueType = await this.handleUniqueConflict(() =>
@@ -72,11 +60,6 @@ export class IssueTypesService {
     dto: UpdateIssueTypeDto,
   ): Promise<IssueTypeResponseDto> {
     const issueType = await this.ensureBelongsToBoard(boardId, issueTypeId);
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
 
     if (dto.name !== undefined && dto.name !== issueType.name) {
       await this.ensureNameAvailable(boardId, dto.name, issueTypeId);
@@ -95,11 +78,6 @@ export class IssueTypesService {
     issueTypeId: number,
   ): Promise<DeleteIssueTypeResponseDto> {
     await this.ensureBelongsToBoard(boardId, issueTypeId);
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     await this.issueTypesRepository.delete(issueTypeId);
 
     return {

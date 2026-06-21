@@ -8,8 +8,15 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { BOARD_MANAGER_ROLES } from '@modules/boards/board-access.service';
+import {
+  BoardMember,
+  BoardRoles,
+} from '@modules/boards/decorators/board-roles.decorator';
+import { BoardRolesGuard } from '@modules/boards/guards/board-roles.guard';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import {
   CreateVersionDto,
@@ -27,11 +34,13 @@ import {
 import { VersionsService } from './versions.service';
 
 @ApiVersionsControllerDocs()
+@UseGuards(BoardRolesGuard)
 @Controller('boards/:id/versions')
 export class VersionsController {
   constructor(private readonly versionsService: VersionsService) {}
 
   @ApiListVersionsDocs()
+  @BoardMember()
   @Get()
   findAll(
     @CurrentUser() user: JwtPayload,
@@ -42,6 +51,7 @@ export class VersionsController {
   }
 
   @ApiCreateVersionDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Post()
   create(
     @CurrentUser() user: JwtPayload,
@@ -52,6 +62,7 @@ export class VersionsController {
   }
 
   @ApiGetVersionDocs()
+  @BoardMember()
   @Get(':versionId')
   findOne(
     @CurrentUser() user: JwtPayload,
@@ -62,6 +73,7 @@ export class VersionsController {
   }
 
   @ApiUpdateVersionDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Put(':versionId')
   update(
     @CurrentUser() user: JwtPayload,
@@ -73,6 +85,7 @@ export class VersionsController {
   }
 
   @ApiDeleteVersionDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Delete(':versionId')
   remove(
     @CurrentUser() user: JwtPayload,

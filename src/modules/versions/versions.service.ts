@@ -1,10 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
-import { BoardMemberRole } from '@prisma/client';
 import { CountedResponse } from '@common/dto/response.dto';
 import { JwtPayload } from '@/types/jwt-payload.type';
-import { BoardAccessService } from '@modules/boards/board-access.service';
 import {
   CreateVersionDto,
   ListVersionsQueryDto,
@@ -20,21 +18,15 @@ type VersionRecord = NonNullable<
   Awaited<ReturnType<VersionsRepository['findActiveByBoardAndId']>>
 >;
 
-const boardManagerRoles = [BoardMemberRole.ADMIN, BoardMemberRole.PM];
-
 @Injectable()
 export class VersionsService {
-  constructor(
-    private readonly versionsRepository: VersionsRepository,
-    private readonly boardAccessService: BoardAccessService,
-  ) {}
+  constructor(private readonly versionsRepository: VersionsRepository) {}
 
   async findAll(
     user: JwtPayload,
     boardId: number,
     query: ListVersionsQueryDto,
   ): Promise<CountedResponse<VersionResponseDto>> {
-    await this.boardAccessService.ensureMember(boardId, user.userId);
     const result = await this.versionsRepository.findByBoard(boardId, query);
 
     return {
@@ -48,11 +40,6 @@ export class VersionsService {
     boardId: number,
     dto: CreateVersionDto,
   ): Promise<VersionResponseDto> {
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     this.ensureDateRangeValid(dto.startDate, dto.endDate);
 
     const version = await this.versionsRepository.create(boardId, dto);
@@ -64,7 +51,6 @@ export class VersionsService {
     boardId: number,
     versionId: number,
   ): Promise<VersionResponseDto> {
-    await this.boardAccessService.ensureMember(boardId, user.userId);
     const version = await this.ensureBelongsToBoard(boardId, versionId);
     return this.toVersionResponse(version);
   }
@@ -76,11 +62,6 @@ export class VersionsService {
     dto: UpdateVersionDto,
   ): Promise<VersionResponseDto> {
     const version = await this.ensureBelongsToBoard(boardId, versionId);
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     this.ensureDateRangeValid(
       dto.startDate ?? version.startDate,
       dto.endDate ?? version.endDate,
@@ -96,11 +77,6 @@ export class VersionsService {
     versionId: number,
   ): Promise<DeleteVersionResponseDto> {
     await this.ensureBelongsToBoard(boardId, versionId);
-    await this.boardAccessService.ensureRole(
-      boardId,
-      user.userId,
-      boardManagerRoles,
-    );
     await this.versionsRepository.delete(versionId);
 
     return {

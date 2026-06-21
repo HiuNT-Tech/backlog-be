@@ -8,8 +8,15 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { BOARD_MANAGER_ROLES } from '@modules/boards/board-access.service';
+import {
+  BoardMember,
+  BoardRoles,
+} from '@modules/boards/decorators/board-roles.decorator';
+import { BoardRolesGuard } from '@modules/boards/guards/board-roles.guard';
 import { JwtPayload } from '@/types/jwt-payload.type';
 import {
   CreateIssueTypeDto,
@@ -26,11 +33,13 @@ import {
 import { IssueTypesService } from './issue-types.service';
 
 @ApiIssueTypesControllerDocs()
+@UseGuards(BoardRolesGuard)
 @Controller('boards/:id/issue-types')
 export class IssueTypesController {
   constructor(private readonly issueTypesService: IssueTypesService) {}
 
   @ApiListIssueTypesDocs()
+  @BoardMember()
   @Get()
   findAll(
     @CurrentUser() user: JwtPayload,
@@ -41,6 +50,7 @@ export class IssueTypesController {
   }
 
   @ApiCreateIssueTypeDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Post()
   create(
     @CurrentUser() user: JwtPayload,
@@ -51,6 +61,7 @@ export class IssueTypesController {
   }
 
   @ApiUpdateIssueTypeDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Put(':issueTypeId')
   update(
     @CurrentUser() user: JwtPayload,
@@ -62,6 +73,7 @@ export class IssueTypesController {
   }
 
   @ApiDeleteIssueTypeDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
   @Delete(':issueTypeId')
   remove(
     @CurrentUser() user: JwtPayload,
