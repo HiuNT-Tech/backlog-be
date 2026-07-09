@@ -17,6 +17,12 @@ import {
   ApiItemCreatedResponse,
   ApiItemResponse,
 } from '@common/decorators/api-response.decorator';
+import { ApiMultipleFilesUploadDocs } from '@common/upload';
+import {
+  ATTACHMENT_MAX_FILES,
+  ATTACHMENT_MIME_TYPES,
+} from '@modules/attachments/attachments.constants';
+import { CreateCommentDto, UpdateCommentDto } from '../dto/comment.dto';
 import {
   CommentListResponseDto,
   CommentResponseDto,
@@ -75,9 +81,18 @@ export function ApiCreateCommentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Create comment',
-      description: 'Add a comment to a card.',
+      description:
+        'Add a comment to a card. Gửi dưới dạng multipart/form-data; ' +
+        'có thể kèm ảnh/file qua field `attachments`.',
     }),
     cardIdParam,
+    ApiMultipleFilesUploadDocs({
+      fieldName: 'attachments',
+      bodyType: CreateCommentDto,
+      required: false,
+      maxFiles: ATTACHMENT_MAX_FILES,
+      allowedMimeTypes: ATTACHMENT_MIME_TYPES,
+    }),
     ...authDocs,
     ApiItemCreatedResponse(CommentResponseDto, {
       description: 'Comment created.',
@@ -101,9 +116,18 @@ export function ApiUpdateCommentDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Update comment',
-      description: 'Update the content of an own comment.',
+      description:
+        'Update an own comment. Gửi multipart/form-data; có thể thêm file mới ' +
+        'qua `attachments` và gỡ file cũ qua `removeAttachmentIds`.',
     }),
     commentIdParam,
+    ApiMultipleFilesUploadDocs({
+      fieldName: 'attachments',
+      bodyType: UpdateCommentDto,
+      required: false,
+      maxFiles: ATTACHMENT_MAX_FILES,
+      allowedMimeTypes: ATTACHMENT_MIME_TYPES,
+    }),
     ...authDocs,
     ApiItemResponse(CommentResponseDto, {
       description: 'Comment updated.',

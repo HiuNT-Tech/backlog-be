@@ -166,10 +166,40 @@ describe('CommentsRepository', () => {
 
   describe('create', () => {
     it('should create a comment with cardId, userId and content, using the comment select', async () => {
-      await repository.create(1, 9, { content: 'Hello' });
+      await repository.create(1, 9, 'Hello');
 
       expect(prisma.comment.create).toHaveBeenCalledWith({
-        data: { cardId: 1, userId: 9, content: 'Hello' },
+        data: {
+          cardId: 1,
+          userId: 9,
+          content: 'Hello',
+          attachments: { create: [] },
+        },
+        select: commentSelect,
+      });
+    });
+
+    it('should nest-create attachments together with the comment', async () => {
+      const attachments = [
+        {
+          fileName: 'a.png',
+          fileKey: 'key-a',
+          fileUrl: 'http://x/key-a',
+          mimeType: 'image/png',
+          fileSize: 10,
+          uploadedByUserId: 9,
+        },
+      ];
+
+      await repository.create(1, 9, 'Hello', attachments);
+
+      expect(prisma.comment.create).toHaveBeenCalledWith({
+        data: {
+          cardId: 1,
+          userId: 9,
+          content: 'Hello',
+          attachments: { create: attachments },
+        },
         select: commentSelect,
       });
     });
@@ -178,7 +208,7 @@ describe('CommentsRepository', () => {
       const record = makeCommentRecord();
       prisma.comment.create.mockResolvedValue(record as never);
 
-      const result = await repository.create(1, 9, { content: 'Hello' });
+      const result = await repository.create(1, 9, 'Hello');
 
       expect(result).toBe(record);
     });
@@ -186,7 +216,7 @@ describe('CommentsRepository', () => {
 
   describe('update', () => {
     it('should update the comment content by id, using the comment select', async () => {
-      await repository.update(5, { content: 'Updated' });
+      await repository.update(5, 'Updated');
 
       expect(prisma.comment.update).toHaveBeenCalledWith({
         where: { id: 5 },
@@ -199,7 +229,7 @@ describe('CommentsRepository', () => {
       const record = makeCommentRecord({ content: 'Updated' });
       prisma.comment.update.mockResolvedValue(record as never);
 
-      const result = await repository.update(5, { content: 'Updated' });
+      const result = await repository.update(5, 'Updated');
 
       expect(result).toBe(record);
     });

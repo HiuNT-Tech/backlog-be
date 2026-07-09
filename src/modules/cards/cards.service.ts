@@ -9,6 +9,8 @@ import {
 } from '@modules/boards/board-access.service';
 import { IssueTypesService } from '@modules/issue-types/issue-types.service';
 import { VersionsService } from '@modules/versions/versions.service';
+import { AttachmentsService } from '@modules/attachments/attachments.service';
+import { UploadedFile } from '@common/upload';
 import {
   CreateCardDto,
   ListBoardCardsQueryDto,
@@ -37,9 +39,14 @@ export class CardsService {
     private readonly boardAccessService: BoardAccessService,
     private readonly issueTypesService: IssueTypesService,
     private readonly versionsService: VersionsService,
+    private readonly attachmentsService: AttachmentsService,
   ) {}
 
-  async create(user: JwtPayload, dto: CreateCardDto): Promise<CardResponseDto> {
+  async create(
+    user: JwtPayload,
+    dto: CreateCardDto,
+    files?: UploadedFile[],
+  ): Promise<CardResponseDto> {
     await this.boardAccessService.ensureRole(
       dto.boardId,
       user.userId,
@@ -66,7 +73,13 @@ export class CardsService {
       );
     }
 
-    const card = await this.cardsRepository.create(dto, user.userId);
+    // Upload trước, tạo card + attachment cùng lúc (nested write) — nếu
+    // upload lỗi thì chưa có gì được ghi vào DB.
+    const prepared = await this.attachmentsService.uploadFiles(
+      files,
+      user.userId,
+    );
+    const card = await this.cardsRepository.create(dto, user.userId, prepared);
     return this.toCardResponse(card);
   }
 
@@ -79,6 +92,7 @@ export class CardsService {
     user: JwtPayload,
     id: number,
     dto: UpdateCardDto,
+    files?: UploadedFile[],
   ): Promise<CardResponseDto> {
     const card = await this.ensureCardVisibleToUser(
       user,
@@ -110,11 +124,18 @@ export class CardsService {
       );
     }
 
-    const updated = await this.cardsRepository.update(
+    await this.cardsRepository.update(
       id,
       dto,
       nextColumnId !== card.columnId,
     );
+    await this.attachmentsService.removeFromCard(id, dto.removeAttachmentIds);
+    await this.attachmentsService.addFilesToCard(id, files, user.userId);
+
+    const updated = await this.cardsRepository.findActiveById(id);
+    if (!updated) {
+      throw new BusinessException(ErrorCode.CARD_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
 
     return this.toCardResponse(updated);
   }
@@ -367,6 +388,9 @@ export class CardsService {
       registeredBy: this.toUserResponse(card.registeredBy),
       createdBy: this.toUserResponse(card.createdBy),
       position: card.position,
+      attachments: card.attachments.map((attachment) =>
+        this.attachmentsService.toResponse(attachment),
+      ),
       createdAt: card.createdAt,
       updatedAt: card.updatedAt,
     };

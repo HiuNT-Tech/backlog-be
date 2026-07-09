@@ -1,28 +1,44 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
   IsInt,
   IsOptional,
   IsString,
   MaxLength,
   Min,
-  MinLength,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { toIntArrayTransform } from '@modules/attachments/attachments.utils';
 
 export class CreateCommentDto {
-  @ApiProperty({ example: 'This is a comment', minLength: 1, maxLength: 5000 })
+  @ApiPropertyOptional({
+    example: 'This is a comment',
+    maxLength: 5000,
+    description: 'Nội dung comment. Có thể bỏ trống nếu có file đính kèm.',
+  })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(5000)
-  content: string;
+  content?: string;
 }
 
 export class UpdateCommentDto {
-  @ApiProperty({ example: 'Updated comment', minLength: 1, maxLength: 5000 })
+  @ApiPropertyOptional({ example: 'Updated comment', maxLength: 5000 })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(5000)
-  content: string;
+  content?: string;
+
+  @ApiPropertyOptional({
+    type: [Number],
+    example: [1, 2],
+    description: 'ID các attachment cần gỡ khỏi comment.',
+  })
+  @IsOptional()
+  @Transform(toIntArrayTransform)
+  @IsArray()
+  @IsInt({ each: true })
+  removeAttachmentIds?: number[];
 }
 
 export class ListCommentsQueryDto {

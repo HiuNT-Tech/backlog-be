@@ -17,6 +17,12 @@ import {
   ApiItemCreatedResponse,
   ApiItemResponse,
 } from '@common/decorators/api-response.decorator';
+import { ApiMultipleFilesUploadDocs } from '@common/upload';
+import {
+  ATTACHMENT_MAX_FILES,
+  ATTACHMENT_MIME_TYPES,
+} from '@modules/attachments/attachments.constants';
+import { CreateCardDto, UpdateCardDto } from '../dto/card.dto';
 import {
   BoardCardsResponseDto,
   CardResponseDto,
@@ -45,7 +51,16 @@ export function ApiCreateCardDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Create card',
-      description: 'Create a card in a board column.',
+      description:
+        'Create a card in a board column. Gửi multipart/form-data; ' +
+        'có thể kèm ảnh/file qua field `attachments`.',
+    }),
+    ApiMultipleFilesUploadDocs({
+      fieldName: 'attachments',
+      bodyType: CreateCardDto,
+      required: false,
+      maxFiles: ATTACHMENT_MAX_FILES,
+      allowedMimeTypes: ATTACHMENT_MIME_TYPES,
     }),
     ...authDocs,
     ApiItemCreatedResponse(CardResponseDto, { description: 'Card created.' }),
@@ -88,9 +103,18 @@ export function ApiUpdateCardDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Update card',
-      description: 'Update mutable card fields.',
+      description:
+        'Update mutable card fields. Gửi multipart/form-data; có thể thêm ' +
+        'file mới qua `attachments` và gỡ file cũ qua `removeAttachmentIds`.',
     }),
     ApiParam({ name: 'id', type: Number, example: 1 }),
+    ApiMultipleFilesUploadDocs({
+      fieldName: 'attachments',
+      bodyType: UpdateCardDto,
+      required: false,
+      maxFiles: ATTACHMENT_MAX_FILES,
+      allowedMimeTypes: ATTACHMENT_MIME_TYPES,
+    }),
     ...authDocs,
     ApiItemResponse(CardResponseDto, { description: 'Card updated.' }),
     ApiBadRequestResponse({

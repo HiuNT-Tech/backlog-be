@@ -43,12 +43,12 @@ describe('CreateCommentDto', () => {
     await expectValid(CreateCommentDto, { content: 'This is a comment' });
   });
 
-  it('should be invalid when content is missing', async () => {
-    await expectInvalid(CreateCommentDto, {}, 'content');
+  it('should be valid when content is missing (attachment-only comment)', async () => {
+    await expectValid(CreateCommentDto, {});
   });
 
-  it('should be invalid when content is an empty string', async () => {
-    await expectInvalid(CreateCommentDto, { content: '' }, 'content');
+  it('should be valid when content is an empty string', async () => {
+    await expectValid(CreateCommentDto, { content: '' });
   });
 
   it('should be invalid when content exceeds 5000 characters', async () => {
@@ -80,12 +80,12 @@ describe('UpdateCommentDto', () => {
     await expectValid(UpdateCommentDto, { content: 'Updated comment' });
   });
 
-  it('should be invalid when content is missing', async () => {
-    await expectInvalid(UpdateCommentDto, {}, 'content');
+  it('should be valid when content is missing', async () => {
+    await expectValid(UpdateCommentDto, {});
   });
 
-  it('should be invalid when content is an empty string', async () => {
-    await expectInvalid(UpdateCommentDto, { content: '' }, 'content');
+  it('should be valid when content is an empty string', async () => {
+    await expectValid(UpdateCommentDto, { content: '' });
   });
 
   it('should be invalid when content exceeds 5000 characters', async () => {
@@ -94,6 +94,13 @@ describe('UpdateCommentDto', () => {
       { content: 'a'.repeat(5001) },
       'content',
     );
+  });
+
+  it('should be valid with removeAttachmentIds as an array of ids', async () => {
+    await expectValid(UpdateCommentDto, {
+      content: 'Updated',
+      removeAttachmentIds: [1, 2, 3],
+    });
   });
 
   it('should be invalid when an extra field is provided', async () => {
