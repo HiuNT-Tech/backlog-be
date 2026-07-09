@@ -12,6 +12,7 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { toIntArrayTransform } from '@modules/attachments/attachments.utils';
 
 const toNumberArray = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') {
@@ -183,6 +184,17 @@ export class UpdateCardDto {
   })
   @MaxLength(32)
   actualHours?: string;
+
+  @ApiPropertyOptional({
+    type: [Number],
+    example: [1, 2],
+    description: 'ID các attachment cần gỡ khỏi ticket.',
+  })
+  @IsOptional()
+  @Transform(toIntArrayTransform)
+  @IsArray()
+  @IsInt({ each: true })
+  removeAttachmentIds?: number[];
 }
 
 export class ListBoardCardsQueryDto {

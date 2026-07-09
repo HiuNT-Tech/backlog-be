@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
 import {
+  attachmentSelect,
+  UploadedAttachmentData,
+} from '@modules/attachments/repositories/attachments.repository';
+import {
   CreateCardDto,
   ListBoardCardsQueryDto,
   MoveCardDto,
@@ -63,6 +67,11 @@ export const cardDetailSelect = {
   position: true,
   createdAt: true,
   updatedAt: true,
+  attachments: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+    select: attachmentSelect,
+  },
 } satisfies Prisma.CardSelect;
 
 @Injectable()
@@ -126,7 +135,17 @@ export class CardsRepository {
     return { total, items };
   }
 
-  async create(dto: CreateCardDto, userId: number) {
+  /**
+   * Tạo card kèm attachment trong CÙNG transaction (đã có $transaction cho
+   * số thứ tự card). Nested-write của attachment nằm trong khối này nên
+   * nếu tạo attachment lỗi, cả card cũng rollback — tránh card "mồ côi"
+   * không có file khi upload thất bại giữa đường.
+   */
+  async create(
+    dto: CreateCardDto,
+    userId: number,
+    attachments: UploadedAttachmentData[] = [],
+  ) {
     const card = await this.prisma.$transaction(async (tx) => {
       const board = await tx.board.update({
         where: { id: dto.boardId },
@@ -166,6 +185,7 @@ export class CardsRepository {
           registeredByUserId: userId,
           createdByUserId: userId,
           position,
+          attachments: { create: attachments },
         },
         select: cardDetailSelect,
       });

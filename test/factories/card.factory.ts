@@ -50,6 +50,12 @@ export type CardRecordFactory = {
   registeredBy: CardUserFactory | null;
   createdBy: CardUserFactory | null;
   position: number;
+  attachments: {
+    id: number;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -101,6 +107,7 @@ export const makeCardRecord = (
   registeredBy: null,
   createdBy: null,
   position: 0,
+  attachments: [],
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-01T00:00:00Z'),
   ...over,

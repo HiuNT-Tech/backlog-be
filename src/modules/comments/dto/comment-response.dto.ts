@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AttachmentResponseDto } from '@modules/attachments/dto/attachment-response.dto';
 
 export class CommentUserResponseDto {
   @ApiProperty({ example: 1 })
@@ -26,6 +27,9 @@ export class CommentResponseDto {
 
   @ApiProperty({ type: CommentUserResponseDto })
   user: CommentUserResponseDto;
+
+  @ApiProperty({ type: [AttachmentResponseDto] })
+  attachments: AttachmentResponseDto[];
 
   @ApiProperty({ example: '2026-05-25T00:00:00.000Z' })
   createdAt: Date;

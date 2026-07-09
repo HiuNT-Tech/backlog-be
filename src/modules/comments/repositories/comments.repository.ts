@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
 import {
-  CreateCommentDto,
-  ListCommentsQueryDto,
-  UpdateCommentDto,
-} from '../dto/comment.dto';
+  attachmentSelect,
+  UploadedAttachmentData,
+} from '@modules/attachments/repositories/attachments.repository';
+import { ListCommentsQueryDto } from '../dto/comment.dto';
 
 export const commentUserSelect = {
   id: true,
@@ -17,10 +17,16 @@ export const commentUserSelect = {
 export const commentSelect = {
   id: true,
   cardId: true,
+  userId: true,
   content: true,
   createdAt: true,
   updatedAt: true,
   user: { select: commentUserSelect },
+  attachments: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+    select: attachmentSelect,
+  },
 } satisfies Prisma.CommentSelect;
 
 @Injectable()
@@ -60,17 +66,33 @@ export class CommentsRepository {
     return { total, items };
   }
 
-  create(cardId: number, userId: number, dto: CreateCommentDto) {
+  /**
+   * Tạo comment kèm attachment trong một lần ghi duy nhất (nested write).
+   * Prisma bọc nested-create trong 1 transaction ngầm, nên nếu bước tạo
+   * attachment lỗi thì comment cũng không được tạo — tránh sinh ra
+   * comment "mồ côi" chỉ có text khi upload file thất bại giữa đường.
+   */
+  create(
+    cardId: number,
+    userId: number,
+    content: string,
+    attachments: UploadedAttachmentData[] = [],
+  ) {
     return this.prisma.comment.create({
-      data: { cardId, userId, content: dto.content },
+      data: {
+        cardId,
+        userId,
+        content,
+        attachments: { create: attachments },
+      },
       select: commentSelect,
     });
   }
 
-  update(id: number, dto: UpdateCommentDto) {
+  update(id: number, content: string) {
     return this.prisma.comment.update({
       where: { id },
-      data: { content: dto.content },
+      data: { content },
       select: commentSelect,
     });
   }

@@ -241,9 +241,10 @@ model Card {
   assignee     User?      @relation("CardAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
   registeredBy User?      @relation("CardRegisteredBy", fields: [registeredByUserId], references: [id], onDelete: SetNull)
   createdBy    User?      @relation("CardCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  issueType    IssueType? @relation(fields: [issueTypeId], references: [id], onDelete: SetNull)
-  version      Version?   @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  issueType    IssueType?   @relation(fields: [issueTypeId], references: [id], onDelete: SetNull)
+  version      Version?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
   comments     Comment[]
+  attachments  Attachment[]
 
   @@unique([boardId, cardNumber], map: "uq_cards_board_card_number")
   @@index([boardId, deletedAt], map: "idx_cards_board_deleted_at")
@@ -268,10 +269,32 @@ model Comment {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card        Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
 
   @@index([cardId, deletedAt], map: "idx_comments_card_deleted_at")
   @@index([userId], map: "idx_comments_user_id")
   @@map("comments")
+}
+
+model Attachment {
+  id               Int       @id @default(autoincrement())
+  fileName         String    @map("file_name")
+  fileKey          String    @map("file_key")
+  fileUrl          String    @map("file_url")
+  mimeType         String    @map("mime_type")
+  fileSize         Int       @map("file_size")
+  cardId           Int?      @map("card_id")
+  commentId        Int?      @map("comment_id")
+  uploadedByUserId Int?      @map("uploaded_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  card    Card?    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, deletedAt], map: "idx_attachments_card_deleted_at")
+  @@index([commentId, deletedAt], map: "idx_attachments_comment_deleted_at")
+  @@map("attachments")
 }

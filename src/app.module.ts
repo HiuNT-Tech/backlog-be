@@ -6,11 +6,13 @@ import {
   databaseConfig,
   jwtConfig,
   redisConfig,
+  storageConfig,
   validationSchema,
 } from '@config/index';
 import { CommonModule } from '@common/common.module';
 import { DatabaseModule } from '@database/database.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { AttachmentsModule } from '@modules/attachments/attachments.module';
 import { BoardsModule } from '@modules/boards/boards.module';
 import { CardsModule } from '@modules/cards/cards.module';
 import { ColumnsModule } from '@modules/columns/columns.module';
@@ -29,7 +31,7 @@ import { AppController } from './app.controller';
       isGlobal: true,
       cache: true,
       envFilePath: ['.env'],
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig],
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig, storageConfig],
       validationSchema,
       validationOptions: {
         allowUnknown: true,
@@ -45,6 +47,7 @@ import { AppController } from './app.controller';
     CommonModule,
     DatabaseModule,
     AuthModule,
+    AttachmentsModule,
     BoardsModule,
     CardsModule,
     ColumnsModule,

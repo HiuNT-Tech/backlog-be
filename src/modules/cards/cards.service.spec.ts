@@ -6,6 +6,7 @@ import { ErrorCode } from '@common/exceptions/error-code';
 import { BoardAccessService } from '@modules/boards/board-access.service';
 import { IssueTypesService } from '@modules/issue-types/issue-types.service';
 import { VersionsService } from '@modules/versions/versions.service';
+import { AttachmentsService } from '@modules/attachments/attachments.service';
 import { CardsService } from './cards.service';
 import { CardsRepository } from './repositories/cards.repository';
 import { CreateCardDto, MoveCardDto, UpdateCardDto } from './dto/card.dto';
@@ -18,6 +19,7 @@ describe('CardsService', () => {
   let boardAccessService: MockProxy<BoardAccessService>;
   let issueTypesService: MockProxy<IssueTypesService>;
   let versionsService: MockProxy<VersionsService>;
+  let attachmentsService: MockProxy<AttachmentsService>;
 
   const user = makeJwtPayload({ userId: 42 });
 
@@ -26,11 +28,23 @@ describe('CardsService', () => {
     boardAccessService = mock<BoardAccessService>();
     issueTypesService = mock<IssueTypesService>();
     versionsService = mock<VersionsService>();
+    attachmentsService = mock<AttachmentsService>();
+    attachmentsService.uploadFiles.mockResolvedValue([]);
+    attachmentsService.addFilesToCard.mockResolvedValue([]);
+    attachmentsService.removeFromCard.mockResolvedValue(undefined);
+    attachmentsService.toResponse.mockImplementation((a) => ({
+      id: a.id,
+      fileName: a.fileName,
+      fileUrl: `http://localhost/v1/attachments/${a.id}/download`,
+      mimeType: a.mimeType,
+      fileSize: a.fileSize,
+    }));
     service = new CardsService(
       cardsRepository,
       boardAccessService,
       issueTypesService,
       versionsService,
+      attachmentsService,
     );
   });
 
@@ -177,7 +191,7 @@ describe('CardsService', () => {
 
       const result = await service.create(user, dto);
 
-      expect(cardsRepository.create).toHaveBeenCalledWith(dto, user.userId);
+      expect(cardsRepository.create).toHaveBeenCalledWith(dto, user.userId, []);
       expect(result.id).toBe(10);
       expect(result.priority).toBe(Priority.HIGH);
       expect(result.assignee).toEqual({
@@ -397,16 +411,58 @@ describe('CardsService', () => {
     it('should update the card and map the result to a response dto on success', async () => {
       const record: any = makeCardRecord({ columnId: 3 });
       const updated: any = makeCardRecord({ columnId: 3, title: 'Updated title' });
-      cardsRepository.findActiveById.mockResolvedValue(record);
+      cardsRepository.findActiveById
+        .mockResolvedValueOnce(record)
+        .mockResolvedValueOnce(updated);
       boardAccessService.ensureMember.mockResolvedValue(undefined as never);
       cardsRepository.findActiveColumnByBoard.mockResolvedValue({ id: 3 });
-      cardsRepository.update.mockResolvedValue(updated);
+      cardsRepository.update.mockResolvedValue(record);
 
       const dto: UpdateCardDto = { title: 'Updated title' };
       const result = await service.update(user, record.id, dto);
 
       expect(cardsRepository.update).toHaveBeenCalledWith(record.id, dto, false);
       expect(result.title).toBe('Updated title');
+    });
+
+    it('should upload new files and remove requested attachments', async () => {
+      const record: any = makeCardRecord({ columnId: 3 });
+      cardsRepository.findActiveById
+        .mockResolvedValueOnce(record)
+        .mockResolvedValueOnce(record);
+      boardAccessService.ensureMember.mockResolvedValue(undefined as never);
+      cardsRepository.findActiveColumnByBoard.mockResolvedValue({ id: 3 });
+      cardsRepository.update.mockResolvedValue(record);
+      const files = [{ originalname: 'a.png' }] as never;
+
+      const dto: UpdateCardDto = { removeAttachmentIds: [1, 2] };
+      await service.update(user, record.id, dto, files);
+
+      expect(attachmentsService.removeFromCard).toHaveBeenCalledWith(
+        record.id,
+        [1, 2],
+      );
+      expect(attachmentsService.addFilesToCard).toHaveBeenCalledWith(
+        record.id,
+        files,
+        user.userId,
+      );
+    });
+
+    it('should throw CARD_NOT_FOUND when the card disappears between update and refetch', async () => {
+      const record: any = makeCardRecord({ columnId: 3 });
+      cardsRepository.findActiveById
+        .mockResolvedValueOnce(record)
+        .mockResolvedValueOnce(null);
+      boardAccessService.ensureMember.mockResolvedValue(undefined as never);
+      cardsRepository.findActiveColumnByBoard.mockResolvedValue({ id: 3 });
+      cardsRepository.update.mockResolvedValue(record);
+
+      await expect(
+        service.update(user, record.id, { title: 'Updated' }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ errorCode: ErrorCode.CARD_NOT_FOUND }),
+      });
     });
   });
 

@@ -40,4 +40,9 @@ export const appConfig = registerAs('app', () => ({
   logMaxFileSizeBytes: Number(
     process.env.LOG_MAX_FILE_SIZE_BYTES ?? 10_485_760,
   ),
+  // Base URL công khai của chính BE (dùng để build link tuyệt đối, ví dụ
+  // link download attachment). Khác với `frontendUrl` (origin của FE).
+  publicUrl:
+    firstNonEmpty(process.env.APP_PUBLIC_URL) ??
+    `http://localhost:${Number(process.env.PORT ?? 3000)}`,
 }));

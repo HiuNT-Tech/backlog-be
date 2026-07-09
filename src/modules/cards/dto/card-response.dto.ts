@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { StatusColor } from '@common/types';
+import { AttachmentResponseDto } from '@modules/attachments/dto/attachment-response.dto';
 
 export class CardUserResponseDto {
   @ApiProperty({ example: 1 })
@@ -126,6 +127,9 @@ export class CardResponseDto {
 
   @ApiProperty({ example: 0 })
   position: number;
+
+  @ApiProperty({ type: [AttachmentResponseDto] })
+  attachments: AttachmentResponseDto[];
 
   @ApiProperty({ example: '2026-05-25T00:00:00.000Z' })
   createdAt: Date;

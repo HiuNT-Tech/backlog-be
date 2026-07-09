@@ -9,9 +9,16 @@ import {
   Post,
   Put,
   Query,
+  UploadedFiles,
 } from '@nestjs/common';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { JwtPayload } from '@/types/jwt-payload.type';
+import { UploadedFile, UseMultipleFilesUpload } from '@common/upload';
+import {
+  ATTACHMENT_MAX_FILE_SIZE_BYTES,
+  ATTACHMENT_MAX_FILES,
+  ATTACHMENT_MIME_TYPES,
+} from '@modules/attachments/attachments.constants';
 import {
   ApiCardsControllerDocs,
   ApiCreateCardDocs,
@@ -28,6 +35,14 @@ import {
 } from './dto/card.dto';
 import { CardsService } from './cards.service';
 
+const cardUploadOptions = {
+  fieldName: 'attachments',
+  maxFiles: ATTACHMENT_MAX_FILES,
+  maxSizeBytes: ATTACHMENT_MAX_FILE_SIZE_BYTES,
+  required: false,
+  allowedMimeTypes: ATTACHMENT_MIME_TYPES,
+};
+
 @ApiCardsControllerDocs()
 @Controller()
 export class CardsController {
@@ -36,8 +51,13 @@ export class CardsController {
   @ApiCreateCardDocs()
   @HttpCode(HttpStatus.CREATED)
   @Post('cards')
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCardDto) {
-    return this.cardsService.create(user, dto);
+  @UseMultipleFilesUpload(cardUploadOptions)
+  create(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateCardDto,
+    @UploadedFiles() attachments: UploadedFile[],
+  ) {
+    return this.cardsService.create(user, dto, attachments);
   }
 
   @ApiGetCardDocs()
@@ -51,12 +71,14 @@ export class CardsController {
 
   @ApiUpdateCardDocs()
   @Put('cards/:id')
+  @UseMultipleFilesUpload(cardUploadOptions)
   update(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCardDto,
+    @UploadedFiles() attachments: UploadedFile[],
   ) {
-    return this.cardsService.update(user, id, dto);
+    return this.cardsService.update(user, id, dto, attachments);
   }
 
   @ApiGetBoardCardsDocs()
