@@ -1,7 +1,9 @@
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ExecutionContext, HttpStatus } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Role } from '@common/enums/role.enum';
+import { BusinessException } from '@common/exceptions/business.exception';
+import { ErrorCode } from '@common/exceptions/error-code';
 import { RolesGuard } from './roles.guard';
 
 describe('RolesGuard', () => {
@@ -41,19 +43,31 @@ describe('RolesGuard', () => {
       expect(guard.canActivate(makeContext({ role: Role.ADMIN }))).toBe(true);
     });
 
-    it('should throw ForbiddenException when the user role is not allowed', () => {
+    it('should throw BusinessException with FORBIDDEN_RESOURCE when the user role is not allowed', () => {
       reflector.getAllAndOverride.mockReturnValue([Role.ADMIN]);
 
       expect(() => guard.canActivate(makeContext({ role: Role.USER }))).toThrow(
-        ForbiddenException,
+        BusinessException,
       );
+
+      try {
+        guard.canActivate(makeContext({ role: Role.USER }));
+        fail('should have thrown');
+      } catch (error) {
+        expect((error as BusinessException).getStatus()).toBe(
+          HttpStatus.FORBIDDEN,
+        );
+        expect((error as BusinessException).getResponse()).toMatchObject({
+          errorCode: ErrorCode.FORBIDDEN_RESOURCE,
+        });
+      }
     });
 
-    it('should throw ForbiddenException when there is no user on the request', () => {
+    it('should throw BusinessException when there is no user on the request', () => {
       reflector.getAllAndOverride.mockReturnValue([Role.USER]);
 
       expect(() => guard.canActivate(makeContext(undefined))).toThrow(
-        ForbiddenException,
+        BusinessException,
       );
     });
   });

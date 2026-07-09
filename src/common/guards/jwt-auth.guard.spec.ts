@@ -1,11 +1,7 @@
-import {
-  ExecutionContext,
-  HttpException,
-  HttpStatus,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { BusinessException } from '@common/exceptions/business.exception';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
@@ -56,11 +52,7 @@ describe('JwtAuthGuard', () => {
     it('should throw HttpException 410 GONE when the token is expired (info.name)', () => {
       expect(() =>
         guard.handleRequest(null, null, { name: 'TokenExpiredError' }),
-      ).toThrow(
-        expect.objectContaining({
-          constructor: HttpException,
-        }),
-      );
+      ).toThrow(HttpException);
 
       try {
         guard.handleRequest(null, null, { name: 'TokenExpiredError' });
@@ -85,10 +77,19 @@ describe('JwtAuthGuard', () => {
       expect(() => guard.handleRequest(err, null, undefined)).toThrow(err);
     });
 
-    it('should throw UnauthorizedException when there is no user and no error', () => {
+    it('should throw BusinessException 401 when there is no user and no error', () => {
       expect(() => guard.handleRequest(null, null, undefined)).toThrow(
-        UnauthorizedException,
+        BusinessException,
       );
+
+      try {
+        guard.handleRequest(null, null, undefined);
+        fail('should have thrown');
+      } catch (error) {
+        expect((error as BusinessException).getStatus()).toBe(
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
     });
 
     it('should return the user when authenticated', () => {

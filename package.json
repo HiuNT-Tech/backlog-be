@@ -64,6 +64,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@testcontainers/postgresql": "^12.0.4",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.9",
@@ -101,6 +102,10 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/test/generate-coverage-dashboard.js"
+    ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1",
       "^@common/(.*)$": "<rootDir>/src/common/$1",
@@ -118,6 +123,14 @@
       "!src/**/decorators/*-swagger.decorator.ts"
     ],
     "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "text-summary",
+      "html",
+      "json-summary",
+      "lcov"
+    ],
+    "globalTeardown": "<rootDir>/test/generate-coverage-dashboard.js",
     "testEnvironment": "node",
     "coverageThreshold": {
       "global": {
