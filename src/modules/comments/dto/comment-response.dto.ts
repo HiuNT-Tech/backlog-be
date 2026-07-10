@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CommentType } from '@prisma/client';
 import { AttachmentResponseDto } from '@modules/attachments/dto/attachment-response.dto';
 
 export class CommentUserResponseDto {
@@ -24,6 +25,14 @@ export class CommentResponseDto {
 
   @ApiProperty({ example: 'This is a comment' })
   content: string;
+
+  @ApiProperty({
+    enum: CommentType,
+    example: CommentType.USER,
+    description:
+      'USER: comment do người dùng viết. SYSTEM: comment tự sinh khi ticket được cập nhật, content là delta JSON của jsondiffpatch.',
+  })
+  type: CommentType;
 
   @ApiProperty({ type: CommentUserResponseDto })
   user: CommentUserResponseDto;

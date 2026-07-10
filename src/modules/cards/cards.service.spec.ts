@@ -8,6 +8,7 @@ import { IssueTypesService } from '@modules/issue-types/issue-types.service';
 import { VersionsService } from '@modules/versions/versions.service';
 import { AttachmentsService } from '@modules/attachments/attachments.service';
 import { CardsService } from './cards.service';
+import { CardHistoryService } from './card-history.service';
 import { CardsRepository } from './repositories/cards.repository';
 import { CreateCardDto, MoveCardDto, UpdateCardDto } from './dto/card.dto';
 import { makeCardRecord, makeCardUser } from '../../../test/factories/card.factory';
@@ -20,6 +21,7 @@ describe('CardsService', () => {
   let issueTypesService: MockProxy<IssueTypesService>;
   let versionsService: MockProxy<VersionsService>;
   let attachmentsService: MockProxy<AttachmentsService>;
+  let cardHistoryService: MockProxy<CardHistoryService>;
 
   const user = makeJwtPayload({ userId: 42 });
 
@@ -29,6 +31,8 @@ describe('CardsService', () => {
     issueTypesService = mock<IssueTypesService>();
     versionsService = mock<VersionsService>();
     attachmentsService = mock<AttachmentsService>();
+    cardHistoryService = mock<CardHistoryService>();
+    cardHistoryService.recordCardUpdate.mockResolvedValue(undefined);
     attachmentsService.uploadFiles.mockResolvedValue([]);
     attachmentsService.addFilesToCard.mockResolvedValue([]);
     attachmentsService.removeFromCard.mockResolvedValue(undefined);
@@ -45,6 +49,7 @@ describe('CardsService', () => {
       issueTypesService,
       versionsService,
       attachmentsService,
+      cardHistoryService,
     );
   });
 
@@ -423,6 +428,46 @@ describe('CardsService', () => {
 
       expect(cardsRepository.update).toHaveBeenCalledWith(record.id, dto, false);
       expect(result.title).toBe('Updated title');
+    });
+
+    it('should record the update history with the before and after snapshots', async () => {
+      const record: any = makeCardRecord({
+        columnId: 3,
+        description: 'Old description',
+      });
+      const updated: any = makeCardRecord({
+        columnId: 3,
+        description: 'New description',
+      });
+      cardsRepository.findActiveById
+        .mockResolvedValueOnce(record)
+        .mockResolvedValueOnce(updated);
+      boardAccessService.ensureMember.mockResolvedValue(undefined as never);
+      cardsRepository.findActiveColumnByBoard.mockResolvedValue({ id: 3 });
+      cardsRepository.update.mockResolvedValue(updated);
+
+      await service.update(user, record.id, { description: 'New description' });
+
+      expect(cardHistoryService.recordCardUpdate).toHaveBeenCalledTimes(1);
+      expect(cardHistoryService.recordCardUpdate).toHaveBeenCalledWith(
+        record.id,
+        user.userId,
+        record,
+        updated,
+      );
+    });
+
+    it('should not record history when the update itself fails', async () => {
+      const record: any = makeCardRecord({ columnId: 3 });
+      cardsRepository.findActiveById.mockResolvedValueOnce(record);
+      boardAccessService.ensureMember.mockResolvedValue(undefined as never);
+      cardsRepository.findActiveColumnByBoard.mockResolvedValue({ id: 3 });
+      cardsRepository.update.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.update(user, record.id, { title: 'Updated' }),
+      ).rejects.toThrow('db down');
+      expect(cardHistoryService.recordCardUpdate).not.toHaveBeenCalled();
     });
 
     it('should upload new files and remove requested attachments', async () => {

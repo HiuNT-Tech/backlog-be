@@ -26,6 +26,7 @@ import {
   CardVersionResponseDto,
   MoveCardResponseDto,
 } from './dto/card-response.dto';
+import { CardHistoryService } from './card-history.service';
 import { CardsRepository } from './repositories/cards.repository';
 
 type CardRecord = NonNullable<
@@ -40,6 +41,7 @@ export class CardsService {
     private readonly issueTypesService: IssueTypesService,
     private readonly versionsService: VersionsService,
     private readonly attachmentsService: AttachmentsService,
+    private readonly cardHistoryService: CardHistoryService,
   ) {}
 
   async create(
@@ -136,6 +138,13 @@ export class CardsService {
     if (!updated) {
       throw new BusinessException(ErrorCode.CARD_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
+
+    await this.cardHistoryService.recordCardUpdate(
+      id,
+      user.userId,
+      card,
+      updated,
+    );
 
     return this.toCardResponse(updated);
   }

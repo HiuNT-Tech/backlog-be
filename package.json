@@ -52,6 +52,7 @@
     "dotenv": "^17.4.2",
     "helmet": "^8.1.0",
     "joi": "^18.0.1",
+    "jsondiffpatch": "^0.7.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.21.0",
@@ -102,10 +103,17 @@
     "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "allowJs": true
+          }
+        }
+      ]
     },
     "transformIgnorePatterns": [
-      "/node_modules/",
+      "/node_modules/(?!(jsondiffpatch|@dmsnell)/)",
       "<rootDir>/test/generate-coverage-dashboard.js"
     ],
     "moduleNameMapper": {
