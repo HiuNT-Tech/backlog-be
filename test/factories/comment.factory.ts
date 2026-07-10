@@ -1,3 +1,4 @@
+import { CommentType } from '@prisma/client';
 import { CardUserFactory, makeCardUser } from './card.factory';
 
 export type AttachmentRecordFactory = {
@@ -12,6 +13,7 @@ export type CommentRecordFactory = {
   cardId: number;
   userId: number;
   content: string;
+  type: CommentType;
   createdAt: Date;
   updatedAt: Date;
   user: CardUserFactory;
@@ -25,6 +27,7 @@ export const makeCommentRecord = (
   cardId: 1,
   userId: 1,
   content: 'A comment',
+  type: CommentType.USER,
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-01T00:00:00Z'),
   user: makeCardUser(),

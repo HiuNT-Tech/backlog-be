@@ -32,6 +32,11 @@ enum BoardInvitationStatus {
   EXPIRED
 }
 
+enum CommentType {
+  USER
+  SYSTEM
+}
+
 enum StatusColor {
   RED
   ORANGE
@@ -261,13 +266,14 @@ model Card {
 }
 
 model Comment {
-  id        Int       @id @default(autoincrement())
-  cardId    Int       @map("card_id")
-  userId    Int       @map("user_id")
-  content   String    @db.Text
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  id        Int         @id @default(autoincrement())
+  cardId    Int         @map("card_id")
+  userId    Int         @map("user_id")
+  content   String      @db.Text
+  type      CommentType @default(USER) @map("type")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  deletedAt DateTime?   @map("deleted_at")
 
   card        Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)

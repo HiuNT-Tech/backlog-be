@@ -74,6 +74,7 @@ describe('CommentsService', () => {
         id: record.id,
         cardId: record.cardId,
         content: record.content,
+        type: record.type,
         user: {
           id: record.user.id,
           email: record.user.email,

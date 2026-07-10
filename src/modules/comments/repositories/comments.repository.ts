@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CommentType, Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
 import {
   attachmentSelect,
@@ -19,6 +19,7 @@ export const commentSelect = {
   cardId: true,
   userId: true,
   content: true,
+  type: true,
   createdAt: true,
   updatedAt: true,
   user: { select: commentUserSelect },
@@ -77,12 +78,14 @@ export class CommentsRepository {
     userId: number,
     content: string,
     attachments: UploadedAttachmentData[] = [],
+    type: CommentType = CommentType.USER,
   ) {
     return this.prisma.comment.create({
       data: {
         cardId,
         userId,
         content,
+        type,
         attachments: { create: attachments },
       },
       select: commentSelect,

@@ -1,4 +1,5 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+import { CommentType } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
 import {
   CommentsRepository,
@@ -173,6 +174,22 @@ describe('CommentsRepository', () => {
           cardId: 1,
           userId: 9,
           content: 'Hello',
+          type: CommentType.USER,
+          attachments: { create: [] },
+        },
+        select: commentSelect,
+      });
+    });
+
+    it('should create a SYSTEM comment when the type is passed explicitly', async () => {
+      await repository.create(1, 9, '{"delta":true}', [], CommentType.SYSTEM);
+
+      expect(prisma.comment.create).toHaveBeenCalledWith({
+        data: {
+          cardId: 1,
+          userId: 9,
+          content: '{"delta":true}',
+          type: CommentType.SYSTEM,
           attachments: { create: [] },
         },
         select: commentSelect,
@@ -198,6 +215,7 @@ describe('CommentsRepository', () => {
           cardId: 1,
           userId: 9,
           content: 'Hello',
+          type: CommentType.USER,
           attachments: { create: attachments },
         },
         select: commentSelect,

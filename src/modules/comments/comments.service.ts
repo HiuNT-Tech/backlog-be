@@ -157,6 +157,7 @@ export class CommentsService {
       id: comment.id,
       cardId: comment.cardId,
       content: comment.content,
+      type: comment.type,
       user: {
         id: comment.user.id,
         email: comment.user.email,
