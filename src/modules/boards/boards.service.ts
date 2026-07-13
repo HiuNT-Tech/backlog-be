@@ -5,6 +5,7 @@ import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardAccessService } from './board-access.service';
 import {
   CreateBoardDto,
+  DuplicateBoardDto,
   GetBoardDetailQueryDto,
   GetBoardUsersQueryDto,
   UpdateBoardDto,
@@ -60,6 +61,38 @@ export class BoardsService {
     }
 
     return this.toBoardResponse(board, []);
+  }
+
+  /**
+   * Nhân bản board nguồn (cột, loại issue, milestone, card) thành board mới
+   * do người thực hiện làm ADMIN duy nhất. Không copy comment/attachment/
+   * lịch sử. Quyền đọc board nguồn đã được `BoardRolesGuard`/`@BoardMember()`
+   * ở controller kiểm tra trước khi vào đây.
+   */
+  async duplicate(
+    user: JwtPayload,
+    sourceBoardId: number,
+    dto: DuplicateBoardDto,
+  ): Promise<BoardResponseDto> {
+    await this.ensureBoardCodeAvailable(dto.boardCode);
+
+    const board = await this.handleUniqueConflict(() =>
+      this.boardsRepository.duplicateBoard({
+        sourceBoardId,
+        dto,
+        userId: user.userId,
+      }),
+    );
+
+    if (!board) {
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const cards = await this.boardsRepository.findBoardCards(board.id);
+    return this.toBoardResponse(board, cards);
   }
 
   async findAll(user: JwtPayload): Promise<BoardResponseDto[]> {
