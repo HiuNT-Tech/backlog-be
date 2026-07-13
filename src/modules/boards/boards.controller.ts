@@ -21,6 +21,7 @@ import { BoardRolesGuard } from './guards/board-roles.guard';
 import {
   ApiBoardsControllerDocs,
   ApiCreateBoardDocs,
+  ApiDuplicateBoardDocs,
   ApiGetBoardDocs,
   ApiGetBoardUsersDocs,
   ApiListBoardsDocs,
@@ -30,6 +31,7 @@ import {
 } from './decorators/boards-swagger.decorator';
 import {
   CreateBoardDto,
+  DuplicateBoardDto,
   GetBoardDetailQueryDto,
   GetBoardUsersQueryDto,
   UpdateBoardDto,
@@ -76,6 +78,18 @@ export class BoardsController {
     @Body() dto: UpdateBoardDto,
   ) {
     return this.boardsService.update(user, id, dto);
+  }
+
+  @ApiDuplicateBoardDocs()
+  @BoardMember()
+  @HttpCode(HttpStatus.CREATED)
+  @Post(':id/duplicate')
+  duplicate(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DuplicateBoardDto,
+  ) {
+    return this.boardsService.duplicate(user, id, dto);
   }
 
   @ApiGetBoardUsersDocs()

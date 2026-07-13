@@ -5,7 +5,11 @@ import {
   getOffsetPagination,
   toPaginatedResponse,
 } from '@common/utils/pagination.util';
-import { CreateBoardDto, GetBoardUsersQueryDto } from '../dto/board.dto';
+import {
+  CreateBoardDto,
+  DuplicateBoardDto,
+  GetBoardUsersQueryDto,
+} from '../dto/board.dto';
 import { DEFAULT_COLUMNS } from '../constants';
 
 const boardBaseSelect = {
@@ -78,6 +82,54 @@ type CreateBoardWithDefaultsParams = {
   dto: CreateBoardDto;
   userId: number;
 };
+
+type DuplicateBoardParams = {
+  sourceBoardId: number;
+  dto: DuplicateBoardDto;
+  userId: number;
+};
+
+const duplicationSourceSelect = {
+  description: true,
+  type: true,
+  columns: {
+    where: { deletedAt: null },
+    orderBy: { position: 'asc' as const },
+    select: { id: true, title: true, statusColor: true, position: true },
+  },
+  issueTypes: {
+    where: { deletedAt: null },
+    select: { id: true, name: true, statusColor: true },
+  },
+  versions: {
+    where: { deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+      description: true,
+    },
+  },
+  cards: {
+    where: { deletedAt: null },
+    orderBy: [{ columnId: 'asc' as const }, { position: 'asc' as const }],
+    select: {
+      columnId: true,
+      issueTypeId: true,
+      versionId: true,
+      title: true,
+      description: true,
+      priority: true,
+      assigneeUserId: true,
+      startDate: true,
+      dueDate: true,
+      estimatedHours: true,
+      actualHours: true,
+      position: true,
+    },
+  },
+} satisfies Prisma.BoardSelect;
 
 @Injectable()
 export class BoardsRepository {
@@ -179,6 +231,139 @@ export class BoardsRepository {
     });
 
     return this.findBoardDetail(board.id);
+  }
+
+  /**
+   * Nhân bản cột, loại issue, milestone và card của board nguồn sang board
+   * mới. KHÔNG copy comment/attachment/lịch sử chỉnh sửa — đó là dữ liệu
+   * hoạt động thực tế, không thuộc về "cấu trúc + nội dung ticket" mà việc
+   * nhân bản board hướng tới.
+   *
+   * Trả về null nếu board nguồn không tồn tại/đã bị xoá — service quyết
+   * định throw lỗi gì.
+   */
+  async duplicateBoard(params: DuplicateBoardParams) {
+    const { sourceBoardId, dto, userId } = params;
+
+    const newBoardId = await this.prisma.$transaction(async (tx) => {
+      const source = await tx.board.findFirst({
+        where: { id: sourceBoardId, deletedAt: null },
+        select: duplicationSourceSelect,
+      });
+
+      if (!source) {
+        return null;
+      }
+
+      const newBoard = await tx.board.create({
+        data: {
+          title: dto.title,
+          boardCode: dto.boardCode,
+          description: dto.description ?? source.description ?? '',
+          type: dto.type ?? source.type,
+          nextCardNumber: source.cards.length + 1,
+        },
+      });
+
+      await tx.boardMember.create({
+        data: {
+          boardId: newBoard.id,
+          userId,
+          role: BoardMemberRole.ADMIN,
+        },
+      });
+
+      const columnIdMap = new Map<number, number>();
+      for (const column of source.columns) {
+        const created = await tx.column.create({
+          data: {
+            boardId: newBoard.id,
+            title: column.title,
+            statusColor: column.statusColor,
+            position: column.position,
+          },
+        });
+        columnIdMap.set(column.id, created.id);
+      }
+
+      const issueTypeIdMap = new Map<number, number>();
+      for (const issueType of source.issueTypes) {
+        const created = await tx.issueType.create({
+          data: {
+            boardId: newBoard.id,
+            name: issueType.name,
+            statusColor: issueType.statusColor,
+          },
+        });
+        issueTypeIdMap.set(issueType.id, created.id);
+      }
+
+      const versionIdMap = new Map<number, number>();
+      for (const version of source.versions) {
+        const created = await tx.version.create({
+          data: {
+            boardId: newBoard.id,
+            name: version.name,
+            startDate: version.startDate,
+            endDate: version.endDate,
+            description: version.description,
+          },
+        });
+        versionIdMap.set(version.id, created.id);
+      }
+
+      // Card không có ai khác tham chiếu ngược tới id của nó trong phạm vi
+      // nhân bản (comment/attachment không được copy) -> dùng createMany,
+      // không cần biết id mới sau khi tạo.
+      const cardsData = source.cards
+        .map((card, index) => {
+          const columnId = columnIdMap.get(card.columnId);
+          // Card mồ côi (column bị xoá nhưng card active) không nên xảy ra
+          // với dữ liệu hợp lệ, nhưng bỏ qua để không làm hỏng cả transaction.
+          if (columnId === undefined) {
+            return null;
+          }
+
+          const cardNumber = index + 1;
+
+          return {
+            boardId: newBoard.id,
+            columnId,
+            cardNumber,
+            cardCode: `${newBoard.boardCode}-${cardNumber}`,
+            title: card.title,
+            description: card.description,
+            priority: card.priority,
+            assigneeUserId: card.assigneeUserId,
+            issueTypeId: card.issueTypeId
+              ? issueTypeIdMap.get(card.issueTypeId) ?? null
+              : null,
+            versionId: card.versionId
+              ? versionIdMap.get(card.versionId) ?? null
+              : null,
+            startDate: card.startDate,
+            dueDate: card.dueDate,
+            estimatedHours: card.estimatedHours,
+            actualHours: card.actualHours,
+            registeredByUserId: userId,
+            createdByUserId: userId,
+            position: card.position,
+          };
+        })
+        .filter((data): data is NonNullable<typeof data> => data !== null);
+
+      if (cardsData.length > 0) {
+        await tx.card.createMany({ data: cardsData });
+      }
+
+      return newBoard.id;
+    });
+
+    if (newBoardId === null) {
+      return null;
+    }
+
+    return this.findBoardDetail(newBoardId);
   }
 
   async updateBoard(

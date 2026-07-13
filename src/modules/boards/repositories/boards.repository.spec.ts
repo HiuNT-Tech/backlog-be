@@ -1,9 +1,13 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { BoardMemberRole, BoardType } from '@prisma/client';
+import { BoardMemberRole, BoardType, StatusColor } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { BoardsRepository } from './boards.repository';
 import { DEFAULT_COLUMNS } from '../constants';
-import { CreateBoardDto, GetBoardUsersQueryDto } from '../dto/board.dto';
+import {
+  CreateBoardDto,
+  DuplicateBoardDto,
+  GetBoardUsersQueryDto,
+} from '../dto/board.dto';
 import { makeBoardRecord } from '../../../../test/factories/board.factory';
 
 describe('BoardsRepository', () => {
@@ -456,6 +460,326 @@ describe('BoardsRepository', () => {
         where: { id: 5 },
         data: { deletedAt: expect.any(Date) },
       });
+    });
+  });
+
+  describe('duplicateBoard', () => {
+    const dto: DuplicateBoardDto = {
+      title: 'Copy of Board',
+      boardCode: 'COPY',
+    };
+
+    const makeSource = (over: Record<string, unknown> = {}) => ({
+      description: 'Original description',
+      type: BoardType.PRIVATE,
+      columns: [
+        { id: 1, title: 'To Do', statusColor: StatusColor.BLUE, position: 0 },
+        { id: 2, title: 'Done', statusColor: StatusColor.GREEN, position: 1 },
+      ],
+      issueTypes: [{ id: 10, name: 'Bug', statusColor: StatusColor.RED }],
+      versions: [
+        {
+          id: 20,
+          name: 'v1.0',
+          startDate: null,
+          endDate: null,
+          description: '',
+        },
+      ],
+      cards: [],
+      ...over,
+    });
+
+    beforeEach(() => {
+      prisma.$transaction.mockImplementation(
+        (async (cb: any) => cb(prisma)) as never,
+      );
+      // Default id cho các create() bên trong vòng lặp cột/loại issue/version
+      // khi test không quan tâm tới giá trị id cụ thể.
+      prisma.column.create.mockResolvedValue({ id: 1 } as never);
+      prisma.issueType.create.mockResolvedValue({ id: 1 } as never);
+      prisma.version.create.mockResolvedValue({ id: 1 } as never);
+    });
+
+    it('should return null without creating anything when the source board does not exist', async () => {
+      prisma.board.findFirst.mockResolvedValue(null);
+
+      const result = await repository.duplicateBoard({
+        sourceBoardId: 999,
+        dto,
+        userId: 1,
+      });
+
+      expect(result).toBeNull();
+      expect(prisma.board.create).not.toHaveBeenCalled();
+    });
+
+    it('should create the new board using dto values, falling back to source description/type', async () => {
+      prisma.board.findFirst.mockResolvedValue(makeSource() as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: dto.boardCode,
+      } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
+
+      expect(prisma.board.create).toHaveBeenCalledWith({
+        data: {
+          title: dto.title,
+          boardCode: dto.boardCode,
+          description: 'Original description',
+          type: BoardType.PRIVATE,
+          nextCardNumber: 1,
+        },
+      });
+    });
+
+    it('should prefer dto description/type over the source when provided', async () => {
+      prisma.board.findFirst.mockResolvedValue(makeSource() as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({
+        sourceBoardId: 1,
+        dto: { ...dto, description: 'New desc', type: BoardType.PUBLIC },
+        userId: 7,
+      });
+
+      expect(prisma.board.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          description: 'New desc',
+          type: BoardType.PUBLIC,
+        }),
+      });
+    });
+
+    it('should make the actor the sole ADMIN of the new board', async () => {
+      prisma.board.findFirst.mockResolvedValue(makeSource() as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
+
+      expect(prisma.boardMember.create).toHaveBeenCalledWith({
+        data: { boardId: 99, userId: 7, role: BoardMemberRole.ADMIN },
+      });
+    });
+
+    it('should recreate every active column, issue type and version under the new board', async () => {
+      prisma.board.findFirst.mockResolvedValue(makeSource() as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      prisma.column.create
+        .mockResolvedValueOnce({ id: 101 } as never)
+        .mockResolvedValueOnce({ id: 102 } as never);
+      prisma.issueType.create.mockResolvedValueOnce({ id: 201 } as never);
+      prisma.version.create.mockResolvedValueOnce({ id: 301 } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
+
+      expect(prisma.column.create).toHaveBeenNthCalledWith(1, {
+        data: {
+          boardId: 99,
+          title: 'To Do',
+          statusColor: StatusColor.BLUE,
+          position: 0,
+        },
+      });
+      expect(prisma.column.create).toHaveBeenNthCalledWith(2, {
+        data: {
+          boardId: 99,
+          title: 'Done',
+          statusColor: StatusColor.GREEN,
+          position: 1,
+        },
+      });
+      expect(prisma.issueType.create).toHaveBeenCalledWith({
+        data: { boardId: 99, name: 'Bug', statusColor: StatusColor.RED },
+      });
+      expect(prisma.version.create).toHaveBeenCalledWith({
+        data: {
+          boardId: 99,
+          name: 'v1.0',
+          startDate: null,
+          endDate: null,
+          description: '',
+        },
+      });
+    });
+
+    it('should copy cards with remapped columnId/issueTypeId/versionId and sequential cardCode', async () => {
+      const source = makeSource({
+        cards: [
+          {
+            columnId: 1,
+            issueTypeId: 10,
+            versionId: 20,
+            title: 'Card A',
+            description: 'desc A',
+            priority: 2,
+            assigneeUserId: 5,
+            startDate: null,
+            dueDate: null,
+            estimatedHours: '4',
+            actualHours: null,
+            position: 0,
+          },
+          {
+            columnId: 2,
+            issueTypeId: null,
+            versionId: null,
+            title: 'Card B',
+            description: null,
+            priority: null,
+            assigneeUserId: null,
+            startDate: null,
+            dueDate: null,
+            estimatedHours: null,
+            actualHours: null,
+            position: 0,
+          },
+        ],
+      });
+      prisma.board.findFirst.mockResolvedValue(source as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      prisma.column.create
+        .mockResolvedValueOnce({ id: 101 } as never)
+        .mockResolvedValueOnce({ id: 102 } as never);
+      prisma.issueType.create.mockResolvedValueOnce({ id: 201 } as never);
+      prisma.version.create.mockResolvedValueOnce({ id: 301 } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
+
+      expect(prisma.card.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            boardId: 99,
+            columnId: 101,
+            cardNumber: 1,
+            cardCode: 'COPY-1',
+            title: 'Card A',
+            issueTypeId: 201,
+            versionId: 301,
+            assigneeUserId: 5,
+            registeredByUserId: 7,
+            createdByUserId: 7,
+          }),
+          expect.objectContaining({
+            boardId: 99,
+            columnId: 102,
+            cardNumber: 2,
+            cardCode: 'COPY-2',
+            title: 'Card B',
+            issueTypeId: null,
+            versionId: null,
+          }),
+        ],
+      });
+      expect(prisma.board.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ nextCardNumber: 3 }) }),
+      );
+    });
+
+    it('should skip card.createMany when the source board has no active cards', async () => {
+      prisma.board.findFirst.mockResolvedValue(makeSource() as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      prisma.column.create
+        .mockResolvedValueOnce({ id: 101 } as never)
+        .mockResolvedValueOnce({ id: 102 } as never);
+      prisma.issueType.create.mockResolvedValueOnce({ id: 201 } as never);
+      prisma.version.create.mockResolvedValueOnce({ id: 301 } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
+
+      expect(prisma.card.createMany).not.toHaveBeenCalled();
+    });
+
+    it('should drop a card whose column has no mapped id instead of failing the whole duplication', async () => {
+      const source = makeSource({
+        columns: [
+          { id: 1, title: 'To Do', statusColor: StatusColor.BLUE, position: 0 },
+        ],
+        cards: [
+          {
+            columnId: 999, // không khớp bất kỳ column nào vừa tạo
+            issueTypeId: null,
+            versionId: null,
+            title: 'Orphan card',
+            description: null,
+            priority: null,
+            assigneeUserId: null,
+            startDate: null,
+            dueDate: null,
+            estimatedHours: null,
+            actualHours: null,
+            position: 0,
+          },
+        ],
+      });
+      prisma.board.findFirst.mockResolvedValue(source as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      prisma.column.create.mockResolvedValueOnce({ id: 101 } as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+
+      await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
+
+      expect(prisma.card.createMany).not.toHaveBeenCalled();
+    });
+
+    it('should return the new board detail on success', async () => {
+      prisma.board.findFirst.mockResolvedValue(makeSource() as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: 'COPY',
+      } as never);
+      const newBoardDetail = makeBoardRecord({ id: 99 });
+      const findDetailSpy = jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(newBoardDetail as never);
+
+      const result = await repository.duplicateBoard({
+        sourceBoardId: 1,
+        dto,
+        userId: 7,
+      });
+
+      expect(findDetailSpy).toHaveBeenCalledWith(99);
+      expect(result).toBe(newBoardDetail);
     });
   });
 });

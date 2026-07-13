@@ -65,6 +65,42 @@ export function ApiCreateBoardDocs() {
   );
 }
 
+export function ApiDuplicateBoardDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Duplicate board',
+      description:
+        'Create a new board by copying columns, issue types, versions and cards from the source board. Comments, attachments and edit history are not copied. The current user becomes the sole ADMIN of the new board.',
+    }),
+    ApiParam({
+      name: 'id',
+      type: Number,
+      example: 1,
+      description: 'Source board id.',
+    }),
+    ...authDocs,
+    ApiItemCreatedResponse(BoardResponseDto, {
+      description: 'New board created from the source board.',
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid payload.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiForbiddenResponse({
+      description: 'Current user is not a member of the source board.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotFoundResponse({
+      description: 'Source board not found.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiConflictResponse({
+      description: 'boardCode already exists.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
 export function ApiListBoardsDocs() {
   return applyDecorators(
     ApiOperation({

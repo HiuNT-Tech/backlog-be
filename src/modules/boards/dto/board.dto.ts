@@ -82,6 +82,58 @@ export class CreateBoardDto {
   type: BoardType;
 }
 
+export class DuplicateBoardDto {
+  @ApiProperty({
+    example: 'Pro IP Partner Customer (copy)',
+    minLength: 3,
+    maxLength: 50,
+  })
+  @Transform(({ value }) => normalizeOptionalString(value))
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  title: string;
+
+  @ApiProperty({
+    example: 'PIPC2',
+    minLength: 2,
+    maxLength: 16,
+    description:
+      'Project key used to build card codes of the new board. Uppercase letters, numbers, and underscores only.',
+  })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsString()
+  @MinLength(2)
+  @MaxLength(16)
+  @Matches(/^[A-Z0-9_-]+$/, {
+    message:
+      'boardCode must contain only uppercase letters, numbers, underscores, and hyphens',
+  })
+  boardCode: string;
+
+  @ApiPropertyOptional({
+    example: '',
+    maxLength: 255,
+    description: 'Bỏ trống để giữ description của board gốc.',
+  })
+  @Transform(({ value }) => normalizeOptionalString(value))
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  description?: string;
+
+  @ApiPropertyOptional({
+    enum: BoardType,
+    example: BoardType.PUBLIC,
+    description: 'Bỏ trống để giữ type của board gốc.',
+  })
+  @IsOptional()
+  @IsEnum(BoardType)
+  type?: BoardType;
+}
+
 export class UpdateBoardDto extends PartialType(CreateBoardDto) {
   @ApiPropertyOptional({ type: [ReorderColumnDto] })
   @IsOptional()
