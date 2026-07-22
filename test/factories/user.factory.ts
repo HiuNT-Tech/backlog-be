@@ -1,5 +1,4 @@
 import { UserEntity } from '@modules/users/entities/user.entity';
-import { Role } from '@common/enums/role.enum';
 
 export const makeUserEntity = (over: Partial<UserEntity> = {}): UserEntity => ({
   id: 1,
@@ -9,7 +8,6 @@ export const makeUserEntity = (over: Partial<UserEntity> = {}): UserEntity => ({
   userCode: null,
   password: '$2b$10$hashedpassword',
   phone: null,
-  role: Role.USER,
   verifyToken: null,
   resetPasswordToken: null,
   resetPasswordExpiresAt: null,

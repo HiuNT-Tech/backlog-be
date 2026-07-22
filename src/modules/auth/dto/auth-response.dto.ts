@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Role } from '@common/enums/role.enum';
 
 export class AuthUserResponseDto {
   @ApiProperty({ example: 1 })
@@ -16,9 +15,6 @@ export class AuthUserResponseDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: null })
   userCode: string | null;
-
-  @ApiProperty({ enum: Role, example: Role.USER })
-  role: Role;
 
   @ApiProperty({ example: true })
   isActive: boolean;

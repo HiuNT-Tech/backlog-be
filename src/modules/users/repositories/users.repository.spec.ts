@@ -1,5 +1,4 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { Role } from '@common/enums/role.enum';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { UsersRepository } from './users.repository';
 import { UserEntity } from '../entities/user.entity';
@@ -154,7 +153,6 @@ describe('UsersRepository', () => {
         displayName: '  New User  ',
         password: 'hashed',
         phone: '0123456789',
-        role: Role.USER,
         verifyToken: 'token',
       });
 
@@ -166,7 +164,6 @@ describe('UsersRepository', () => {
           userCode: null,
           password: 'hashed',
           phone: '0123456789',
-          role: Role.USER,
           verifyToken: 'token',
           isActive: false,
         },
@@ -181,7 +178,6 @@ describe('UsersRepository', () => {
       await repository.createUser({
         email: 'jane@example.com',
         password: 'hashed',
-        role: Role.USER,
         verifyToken: 'token',
       });
 
@@ -200,7 +196,6 @@ describe('UsersRepository', () => {
         email: 'jane@example.com',
         displayName: '   ',
         password: 'hashed',
-        role: Role.USER,
         verifyToken: 'token',
       });
 
@@ -218,7 +213,6 @@ describe('UsersRepository', () => {
       await repository.createUser({
         email: 'jane@example.com',
         password: 'hashed',
-        role: Role.USER,
         verifyToken: 'token',
       });
 

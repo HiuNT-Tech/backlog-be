@@ -2,7 +2,6 @@ import { mock, MockProxy } from 'jest-mock-extended';
 import { HttpStatus } from '@nestjs/common';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
-import { Role } from '@common/enums/role.enum';
 import * as cryptoUtil from '@common/utils/crypto.util';
 import { UsersService } from './users.service';
 import { UsersRepository } from './repositories/users.repository';
@@ -49,7 +48,6 @@ describe('UsersService', () => {
         displayName: dto.displayName,
         password: 'hashed-password',
         phone: dto.phone,
-        role: Role.USER,
         verifyToken: 'random-token',
       });
       expect(result).toBeInstanceOf(UserResponseDto);
@@ -58,7 +56,7 @@ describe('UsersService', () => {
   });
 
   describe('createForRegistration', () => {
-    it('should create a user entity with hashed password, USER role and a generated verify token', async () => {
+    it('should create a user entity with hashed password and a generated verify token', async () => {
       const dto: CreateUserDto = {
         email: 'register@example.com',
         password: 'plain-password',
@@ -79,7 +77,6 @@ describe('UsersService', () => {
         displayName: undefined,
         password: 'hashed-password',
         phone: undefined,
-        role: Role.USER,
         verifyToken: 'random-token',
       });
       expect(result).toBe(createdUser);

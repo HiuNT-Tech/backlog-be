@@ -3,7 +3,6 @@ import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 import { PaginatedResponse } from '@common/dto/response.dto';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
-import { Role } from '@common/enums/role.enum';
 import {
   hashPassword,
   generateRandomToken,
@@ -42,7 +41,6 @@ export class UsersService {
       displayName: dto.displayName,
       password,
       phone: dto.phone,
-      role: Role.USER,
       verifyToken: generateRandomToken(),
     });
   }
