@@ -1,5 +1,3 @@
-import { Role } from '@common/enums/role.enum';
-
 export class UserEntity {
   id: number;
   email: string;
@@ -8,7 +6,6 @@ export class UserEntity {
   userCode: string | null;
   password: string;
   phone: string | null;
-  role: Role;
   verifyToken: string | null;
   resetPasswordToken: string | null;
   resetPasswordExpiresAt: Date | null;

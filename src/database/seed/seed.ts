@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, Role, BoardType, BoardMemberRole, StatusColor } from '@prisma/client';
+import { PrismaClient, BoardType, BoardMemberRole, StatusColor } from '@prisma/client';
 import { hashPassword } from '@common/utils/crypto.util';
 import { buildPostgresUrl } from '@config/database-url.util';
 
@@ -11,7 +11,6 @@ const DEV_USER = {
   email: 'admin@example.com',
   displayName: 'Admin',
   password: 'Admin@123456',
-  role: Role.ADMIN,
 } as const;
 
 const BOARD = {
@@ -56,7 +55,6 @@ async function main(): Promise<void> {
         email: DEV_USER.email,
         displayName: DEV_USER.displayName,
         password: hashedPassword,
-        role: DEV_USER.role,
         isActive: true,
       },
     });

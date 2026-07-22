@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PaginatedResponse } from '@common/dto/response.dto';
-import { Role } from '@common/enums/role.enum';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { BasePrismaRepository } from '@database/prisma/repositories';
 import { toPaginatedResponse } from '@common/utils/pagination.util';
@@ -22,7 +21,6 @@ type CreateUserData = {
   displayName?: string;
   password: string;
   phone?: string;
-  role: Role;
   verifyToken: string;
 };
 
@@ -118,7 +116,6 @@ export class UsersRepository extends BasePrismaRepository<
         userCode: null,
         password: data.password,
         phone: data.phone ?? null,
-        role: data.role,
         verifyToken: data.verifyToken,
         isActive: false,
       },
@@ -227,7 +224,6 @@ export class UsersRepository extends BasePrismaRepository<
       userCode: user.userCode,
       password: user.password,
       phone: user.phone,
-      role: user.role as Role,
       verifyToken: user.verifyToken,
       resetPasswordToken: user.resetPasswordToken,
       resetPasswordExpiresAt: user.resetPasswordExpiresAt,

@@ -4,7 +4,6 @@ import { createHash } from 'node:crypto';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { HttpStatus } from '@nestjs/common';
-import { Role } from '@common/enums/role.enum';
 import { TokenService } from './token.service';
 
 describe('TokenService', () => {
@@ -12,7 +11,7 @@ describe('TokenService', () => {
   let configService: MockProxy<ConfigService>;
   let service: TokenService;
 
-  const payload = { userId: 1, email: 'user@example.com', role: Role.USER };
+  const payload = { userId: 1, email: 'user@example.com' };
 
   beforeEach(() => {
     jwtService = mock<JwtService>();

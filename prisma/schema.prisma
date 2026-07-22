@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
 enum BoardType {
   PUBLIC
   PRIVATE
@@ -58,7 +53,6 @@ model User {
   userCode    String?   @map("user_code")
   password    String
   phone       String?
-  role        Role      @default(USER)
   verifyToken String?   @map("verify_token")
   resetPasswordToken     String?   @map("reset_password_token")
   resetPasswordExpiresAt DateTime? @map("reset_password_expires_at")

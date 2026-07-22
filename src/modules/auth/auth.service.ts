@@ -1,6 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Role } from '@common/enums/role.enum';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 import {
@@ -32,7 +31,6 @@ type UserResponse = {
   displayName: string;
   avatar: string | null;
   userCode: string | null;
-  role: Role;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -54,7 +52,6 @@ type AuthUserSource = {
   displayName: string;
   avatar?: string | null;
   userCode?: string | null;
-  role: Role | string;
 };
 
 @Injectable()
@@ -353,7 +350,6 @@ export class AuthService {
     return {
       userId: user.id,
       email: user.email,
-      role: user.role as Role,
     };
   }
 
@@ -364,7 +360,6 @@ export class AuthService {
       displayName: user.displayName,
       avatar: user.avatar,
       userCode: user.userCode,
-      role: user.role,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

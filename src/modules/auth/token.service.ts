@@ -6,7 +6,7 @@ import { JwtPayload } from '@/types/jwt-payload.type';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 
-type TokenPayload = Pick<JwtPayload, 'userId' | 'email' | 'role'>;
+type TokenPayload = Pick<JwtPayload, 'userId' | 'email'>;
 
 @Injectable()
 export class TokenService {
