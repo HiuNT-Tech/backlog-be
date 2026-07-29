@@ -94,4 +94,12 @@ export class InvitationResponseDto {
     example: '2026-06-14T00:00:00.000Z',
   })
   updatedAt: Date;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: 'a1b2c3d4e5f6',
+    description:
+      'Raw invitation token. Only present in "my invitations" responses, so the FE can accept/decline directly without the email link.',
+  })
+  token?: string;
 }

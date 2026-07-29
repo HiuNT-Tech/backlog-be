@@ -23,6 +23,7 @@ export const invitationSelect = {
   invitedByUserId: true,
   role: true,
   status: true,
+  token: true,
   expiresAt: true,
   respondedAt: true,
   createdAt: true,
@@ -59,14 +60,6 @@ export class InvitationsRepository {
   create(data: CreateInvitationData): Promise<InvitationRecord> {
     return this.prisma.boardInvitation.create({
       data,
-      select: invitationSelect,
-    });
-  }
-
-  delete(invitationId: number): Promise<InvitationRecord | null> {
-    return this.prisma.boardInvitation.update({
-      where: { id: invitationId },
-      data: { deletedAt: new Date() },
       select: invitationSelect,
     });
   }
@@ -214,6 +207,36 @@ export class InvitationsRepository {
       BoardInvitationStatus.REVOKED,
       true,
     );
+  }
+
+  async resend(
+    invitationId: number,
+    data: { token: string; expiresAt: Date },
+  ): Promise<InvitationRecord | null> {
+    const updateResult = await this.prisma.boardInvitation.updateMany({
+      where: {
+        id: invitationId,
+        deletedAt: null,
+        status: {
+          in: [BoardInvitationStatus.PENDING, BoardInvitationStatus.EXPIRED],
+        },
+      },
+      data: {
+        token: data.token,
+        expiresAt: data.expiresAt,
+        status: BoardInvitationStatus.PENDING,
+        respondedAt: null,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      return null;
+    }
+
+    return this.prisma.boardInvitation.findUnique({
+      where: { id: invitationId },
+      select: invitationSelect,
+    });
   }
 
   async decline(invitationId: number): Promise<InvitationRecord | null> {

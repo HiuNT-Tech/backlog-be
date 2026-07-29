@@ -15,6 +15,7 @@ export type InvitationRecordFactory = {
   invitedByUserId: number | null;
   role: BoardMemberRole;
   status: BoardInvitationStatus;
+  token: string;
   expiresAt: Date;
   respondedAt: Date | null;
   createdAt: Date;
@@ -34,6 +35,7 @@ export const makeInvitationRecord = (
   invitedByUserId: 1,
   role: BoardMemberRole.MEMBER,
   status: BoardInvitationStatus.PENDING,
+  token: 'invitation-token',
   expiresAt: new Date('2026-01-08T00:00:00Z'),
   respondedAt: null,
   createdAt: new Date('2026-01-01T00:00:00Z'),

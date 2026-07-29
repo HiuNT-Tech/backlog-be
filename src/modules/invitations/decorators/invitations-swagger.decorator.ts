@@ -167,6 +167,53 @@ export function ApiRevokeInvitationDocs() {
   );
 }
 
+export function ApiResendInvitationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Resend board invitation',
+      description:
+        'Regenerate the token and expiry for a pending or expired invitation, reset it to PENDING, and resend the invitation email.',
+    }),
+    ApiParam({
+      name: 'id',
+      type: Number,
+      example: 1,
+      description: 'Board id.',
+    }),
+    ApiParam({
+      name: 'invitationId',
+      type: Number,
+      example: 10,
+      description: 'Invitation id on the board.',
+    }),
+    ...authDocs,
+    ApiItemResponse(InvitationResponseDto, {
+      description: 'Invitation resent.',
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid board id or invitation id.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiForbiddenResponse({
+      description: 'Current user is not ADMIN or PM on this board.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiNotFoundResponse({
+      description: 'Board, inviter, or invitation not found.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiConflictResponse({
+      description:
+        'Invitation has already been accepted, declined, or revoked.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiServiceUnavailableResponse({
+      description: 'Email provider is unavailable.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
 export function ApiGetInvitationByTokenDocs() {
   return applyDecorators(
     ApiOperation({
