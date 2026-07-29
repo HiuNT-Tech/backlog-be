@@ -2,9 +2,16 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { BoardMemberRole, BoardType, StatusColor } from '@prisma/client';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { BoardsRepository } from './boards.repository';
-import { DEFAULT_COLUMNS } from '../constants';
+import {
+  DEFAULT_COLUMNS,
+  SAMPLE_BOARD_CARDS,
+  SAMPLE_BOARD_DESCRIPTION,
+  SAMPLE_BOARD_ISSUE_TYPES,
+  SAMPLE_BOARD_VERSIONS,
+} from '../constants';
 import {
   CreateBoardDto,
+  CreateSampleBoardDto,
   DuplicateBoardDto,
   GetBoardUsersQueryDto,
 } from '../dto/board.dto';
@@ -120,7 +127,9 @@ describe('BoardsRepository', () => {
       const result = await repository.findBoardDetailByCode('PIPC');
 
       expect(prisma.board.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { boardCode: 'PIPC', deletedAt: null } }),
+        expect.objectContaining({
+          where: { boardCode: 'PIPC', deletedAt: null },
+        }),
       );
       expect(result).toBe(board);
     });
@@ -163,15 +172,14 @@ describe('BoardsRepository', () => {
       const createdBoard = { id: 10 };
       const boardDetail = makeBoardRecord({ id: 10 });
 
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       prisma.board.create.mockResolvedValue(createdBoard as never);
       prisma.boardMember.create.mockResolvedValue({} as never);
-      prisma.column.createMany.mockResolvedValue({ count: 4 } as never);
+      prisma.column.createMany.mockResolvedValue({ count: 4 });
       const findDetailSpy = jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(boardDetail as never);
+        .mockResolvedValue(boardDetail);
 
       const result = await repository.createBoardWithDefaults({
         dto,
@@ -212,33 +220,31 @@ describe('BoardsRepository', () => {
       };
       const createdBoard = { id: 11 };
 
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       prisma.board.create.mockResolvedValue(createdBoard as never);
       prisma.boardMember.create.mockResolvedValue({} as never);
-      prisma.column.createMany.mockResolvedValue({ count: 4 } as never);
+      prisma.column.createMany.mockResolvedValue({ count: 4 });
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 11 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 11 }));
 
       await repository.createBoardWithDefaults({ dto, userId: 1 });
 
       expect(prisma.board.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ description: '' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ description: '' }),
+        }),
       );
     });
   });
 
   describe('updateBoard', () => {
     it('should skip calling board.update when data is an empty object', async () => {
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       const boardDetail = makeBoardRecord();
-      jest
-        .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(boardDetail as never);
+      jest.spyOn(repository, 'findBoardDetail').mockResolvedValue(boardDetail);
 
       const result = await repository.updateBoard(1, {});
 
@@ -247,12 +253,11 @@ describe('BoardsRepository', () => {
     });
 
     it('should call board.update with the given data when data is non-empty', async () => {
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord() as never);
+        .mockResolvedValue(makeBoardRecord());
 
       await repository.updateBoard(1, { title: 'Updated' });
 
@@ -263,12 +268,11 @@ describe('BoardsRepository', () => {
     });
 
     it('should update each column position once per column when columns are given', async () => {
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord() as never);
+        .mockResolvedValue(makeBoardRecord());
 
       await repository.updateBoard(1, {}, [
         { id: 1, position: 2 },
@@ -287,12 +291,11 @@ describe('BoardsRepository', () => {
     });
 
     it('should not call column.update when columns is undefined', async () => {
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord() as never);
+        .mockResolvedValue(makeBoardRecord());
 
       await repository.updateBoard(1, { title: 'Updated' });
 
@@ -342,9 +345,8 @@ describe('BoardsRepository', () => {
           },
         },
       ];
-      prisma.$transaction.mockImplementation(
-        (async (ops: any) => Promise.all(ops)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (ops: any) =>
+        Promise.all(ops)) as never);
       prisma.boardMember.count.mockResolvedValue(1);
       prisma.boardMember.findMany.mockResolvedValue(items as never);
 
@@ -370,9 +372,8 @@ describe('BoardsRepository', () => {
         skip: 0,
         limit: 10,
       };
-      prisma.$transaction.mockImplementation(
-        (async (ops: any) => Promise.all(ops)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (ops: any) =>
+        Promise.all(ops)) as never);
       prisma.boardMember.count.mockResolvedValue(0);
       prisma.boardMember.findMany.mockResolvedValue([] as never);
 
@@ -394,9 +395,8 @@ describe('BoardsRepository', () => {
         skip: 0,
         limit: 10,
       };
-      prisma.$transaction.mockImplementation(
-        (async (ops: any) => Promise.all(ops)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (ops: any) =>
+        Promise.all(ops)) as never);
       prisma.boardMember.count.mockResolvedValue(0);
       prisma.boardMember.findMany.mockResolvedValue([] as never);
 
@@ -491,9 +491,8 @@ describe('BoardsRepository', () => {
     });
 
     beforeEach(() => {
-      prisma.$transaction.mockImplementation(
-        (async (cb: any) => cb(prisma)) as never,
-      );
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
       // Default id cho các create() bên trong vòng lặp cột/loại issue/version
       // khi test không quan tâm tới giá trị id cụ thể.
       prisma.column.create.mockResolvedValue({ id: 1 } as never);
@@ -522,7 +521,7 @@ describe('BoardsRepository', () => {
       } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
 
@@ -545,7 +544,7 @@ describe('BoardsRepository', () => {
       } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({
         sourceBoardId: 1,
@@ -569,7 +568,7 @@ describe('BoardsRepository', () => {
       } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
 
@@ -591,7 +590,7 @@ describe('BoardsRepository', () => {
       prisma.version.create.mockResolvedValueOnce({ id: 301 } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
 
@@ -670,7 +669,7 @@ describe('BoardsRepository', () => {
       prisma.version.create.mockResolvedValueOnce({ id: 301 } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
 
@@ -700,7 +699,9 @@ describe('BoardsRepository', () => {
         ],
       });
       expect(prisma.board.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ nextCardNumber: 3 }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ nextCardNumber: 3 }),
+        }),
       );
     });
 
@@ -717,7 +718,7 @@ describe('BoardsRepository', () => {
       prisma.version.create.mockResolvedValueOnce({ id: 301 } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
 
@@ -754,7 +755,7 @@ describe('BoardsRepository', () => {
       prisma.column.create.mockResolvedValueOnce({ id: 101 } as never);
       jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(makeBoardRecord({ id: 99 }) as never);
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
 
       await repository.duplicateBoard({ sourceBoardId: 1, dto, userId: 7 });
 
@@ -770,7 +771,7 @@ describe('BoardsRepository', () => {
       const newBoardDetail = makeBoardRecord({ id: 99 });
       const findDetailSpy = jest
         .spyOn(repository, 'findBoardDetail')
-        .mockResolvedValue(newBoardDetail as never);
+        .mockResolvedValue(newBoardDetail);
 
       const result = await repository.duplicateBoard({
         sourceBoardId: 1,
@@ -780,6 +781,200 @@ describe('BoardsRepository', () => {
 
       expect(findDetailSpy).toHaveBeenCalledWith(99);
       expect(result).toBe(newBoardDetail);
+    });
+  });
+
+  describe('createSampleBoard', () => {
+    const dto: CreateSampleBoardDto = {
+      title: 'Sample Project',
+      boardCode: 'SAMPLE',
+    };
+
+    /** Card thật gửi xuống `card.createMany` — chỉ các field test cần đọc. */
+    type CreatedCard = {
+      columnId: number;
+      cardNumber: number;
+      cardCode: string;
+      title: string;
+      assigneeUserId: number | null;
+      issueTypeId: number;
+      versionId: number;
+      dueDate: Date | null;
+      position: number;
+    };
+
+    const createdCards = (): CreatedCard[] => {
+      const args = prisma.card.createMany.mock.calls[0][0] as unknown as {
+        data: CreatedCard[];
+      };
+      return args.data;
+    };
+
+    beforeEach(() => {
+      prisma.$transaction.mockImplementation((async (cb: any) =>
+        cb(prisma)) as never);
+      prisma.board.create.mockResolvedValue({
+        id: 99,
+        boardCode: dto.boardCode,
+      } as never);
+      // Id khác nhau cho từng cột/loại issue/milestone để kiểm tra được card
+      // có được map sang đúng bản ghi mới hay không.
+      let columnSeq = 0;
+      let issueTypeSeq = 0;
+      let versionSeq = 0;
+      prisma.column.create.mockImplementation((() =>
+        Promise.resolve({ id: 100 + ++columnSeq })) as never);
+      prisma.issueType.create.mockImplementation((() =>
+        Promise.resolve({ id: 200 + ++issueTypeSeq })) as never);
+      prisma.version.create.mockImplementation((() =>
+        Promise.resolve({ id: 300 + ++versionSeq })) as never);
+      jest
+        .spyOn(repository, 'findBoardDetail')
+        .mockResolvedValue(makeBoardRecord({ id: 99 }));
+    });
+
+    it('should create a PUBLIC board with the sample description of the locale', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'vi' });
+
+      expect(prisma.board.create).toHaveBeenCalledWith({
+        data: {
+          title: dto.title,
+          boardCode: dto.boardCode,
+          description: SAMPLE_BOARD_DESCRIPTION.vi,
+          type: BoardType.PUBLIC,
+          nextCardNumber: SAMPLE_BOARD_CARDS.length + 1,
+        },
+      });
+    });
+
+    it('should make the actor the sole ADMIN of the sample board', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      expect(prisma.boardMember.create).toHaveBeenCalledTimes(1);
+      expect(prisma.boardMember.create).toHaveBeenCalledWith({
+        data: { boardId: 99, userId: 7, role: BoardMemberRole.ADMIN },
+      });
+    });
+
+    it('should seed the default columns plus the sample issue types and milestones', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      expect(prisma.column.create).toHaveBeenCalledTimes(
+        DEFAULT_COLUMNS.length,
+      );
+      expect(prisma.issueType.create).toHaveBeenCalledTimes(
+        SAMPLE_BOARD_ISSUE_TYPES.length,
+      );
+      expect(prisma.version.create).toHaveBeenCalledTimes(
+        SAMPLE_BOARD_VERSIONS.length,
+      );
+      expect(prisma.issueType.create).toHaveBeenCalledWith({
+        data: {
+          boardId: 99,
+          name: SAMPLE_BOARD_ISSUE_TYPES[0].name,
+          statusColor: SAMPLE_BOARD_ISSUE_TYPES[0].statusColor,
+        },
+      });
+    });
+
+    it('should number the sample cards sequentially and prefix codes with the board code', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      const cards = createdCards();
+      expect(cards).toHaveLength(SAMPLE_BOARD_CARDS.length);
+      expect(cards.map((card) => card.cardNumber)).toEqual(
+        SAMPLE_BOARD_CARDS.map((_, index) => index + 1),
+      );
+      expect(cards.map((card) => card.cardCode)).toEqual(
+        SAMPLE_BOARD_CARDS.map((_, index) => `SAMPLE-${index + 1}`),
+      );
+    });
+
+    it('should map every sample card onto the newly created column, issue type and milestone', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      const cards = createdCards();
+      cards.forEach((card, index) => {
+        const source = SAMPLE_BOARD_CARDS[index];
+        expect(card.columnId).toBe(100 + source.columnIndex + 1);
+        expect(card.issueTypeId).toBe(200 + source.issueTypeIndex + 1);
+        expect(card.versionId).toBe(300 + source.versionIndex + 1);
+      });
+    });
+
+    it('should restart card positions in each column', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      const positionsByColumn = new Map<number, number[]>();
+      createdCards().forEach((card) => {
+        const positions = positionsByColumn.get(card.columnId) ?? [];
+        positions.push(card.position);
+        positionsByColumn.set(card.columnId, positions);
+      });
+
+      // Mỗi cột phải có position 0,1,2... — không dùng chung dãy số toàn board.
+      for (const positions of positionsByColumn.values()) {
+        expect(positions).toEqual(positions.map((_, index) => index));
+      }
+    });
+
+    it('should assign only the cards flagged for the creator', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      const expectedAssigned = SAMPLE_BOARD_CARDS.filter(
+        (card) => card.assignToCreator,
+      ).length;
+      const cards = createdCards();
+
+      // Có ít nhất 1 card gán cho người tạo, nếu không thì filter "việc của
+      // tôi" trên board mẫu sẽ rỗng và mất tác dụng minh hoạ.
+      expect(expectedAssigned).toBeGreaterThan(0);
+      expect(cards.filter((card) => card.assigneeUserId === 7)).toHaveLength(
+        expectedAssigned,
+      );
+      expect(cards.filter((card) => card.assigneeUserId === null)).toHaveLength(
+        SAMPLE_BOARD_CARDS.length - expectedAssigned,
+      );
+    });
+
+    it('should include an already overdue card so the overdue indicator is visible', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const overdue = createdCards().filter(
+        (card) => card.dueDate !== null && card.dueDate < today,
+      );
+
+      expect(overdue.length).toBeGreaterThan(0);
+      expect(overdue).toHaveLength(
+        SAMPLE_BOARD_CARDS.filter((card) => (card.dueInDays ?? 0) < 0).length,
+      );
+    });
+
+    it('should use the card text of the requested locale', async () => {
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'vi' });
+      const vietnamese = createdCards().map((card) => card.title);
+
+      prisma.card.createMany.mockClear();
+      await repository.createSampleBoard({ dto, userId: 7, locale: 'en' });
+      const english = createdCards().map((card) => card.title);
+
+      expect(vietnamese).toEqual(
+        SAMPLE_BOARD_CARDS.map((card) => card.title.vi),
+      );
+      expect(english).toEqual(SAMPLE_BOARD_CARDS.map((card) => card.title.en));
+    });
+
+    it('should return the new board detail', async () => {
+      const result = await repository.createSampleBoard({
+        dto,
+        userId: 7,
+        locale: 'en',
+      });
+
+      expect(repository.findBoardDetail).toHaveBeenCalledWith(99);
+      expect(result).not.toBeNull();
     });
   });
 });

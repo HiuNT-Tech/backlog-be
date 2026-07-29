@@ -4,6 +4,7 @@ import { PaginatedResponse } from '@common/dto/response.dto';
 import { PrismaService } from '@database/prisma/prisma.service';
 import { BasePrismaRepository } from '@database/prisma/repositories';
 import { toPaginatedResponse } from '@common/utils/pagination.util';
+import { buildUserCode } from '@common/utils/user-code.util';
 import { UserEntity } from '../entities/user.entity';
 
 type FindPaginatedUsersParams = {
@@ -108,17 +109,25 @@ export class UsersRepository extends BasePrismaRepository<
     const defaultDisplayName = data.email.split('@')[0];
     const displayName = data.displayName?.trim() || defaultDisplayName;
 
-    const user = await this.delegate.create({
-      data: {
-        email: data.email,
-        displayName,
-        avatar: null,
-        userCode: null,
-        password: data.password,
-        phone: data.phone ?? null,
-        verifyToken: data.verifyToken,
-        isActive: false,
-      },
+    // `userCode` sinh từ `id` nên chỉ biết được sau khi insert. Bọc create +
+    // update trong một transaction để không bao giờ để lại user thiếu mã.
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: data.email,
+          displayName,
+          avatar: null,
+          password: data.password,
+          phone: data.phone ?? null,
+          verifyToken: data.verifyToken,
+          isActive: false,
+        },
+      });
+
+      return tx.user.update({
+        where: { id: created.id },
+        data: { userCode: buildUserCode(created.id) },
+      });
     });
 
     return this.toEntity(user);

@@ -5,12 +5,14 @@ import { JwtPayload } from '@/types/jwt-payload.type';
 import { BoardAccessService } from './board-access.service';
 import {
   CreateBoardDto,
+  CreateSampleBoardDto,
   DuplicateBoardDto,
   GetBoardDetailQueryDto,
   GetBoardUsersQueryDto,
   UpdateBoardDto,
   UpdateMemberRoleDto,
 } from './dto/board.dto';
+import { DEFAULT_SAMPLE_BOARD_LOCALE } from './constants';
 import {
   BoardCardResponseDto,
   BoardColumnResponseDto,
@@ -88,6 +90,36 @@ export class BoardsService {
       throw new BusinessException(
         ErrorCode.BOARD_NOT_FOUND,
         HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const cards = await this.boardsRepository.findBoardCards(board.id);
+    return this.toBoardResponse(board, cards);
+  }
+
+  /**
+   * Tạo project mẫu: board có sẵn cột, loại issue, milestone và ticket demo để
+   * người dùng chưa quen tool xem trước một dự án thật trông như thế nào.
+   * Không cần board nguồn — dữ liệu mẫu nằm trong code.
+   */
+  async createSample(
+    user: JwtPayload,
+    dto: CreateSampleBoardDto,
+  ): Promise<BoardResponseDto> {
+    await this.ensureBoardCodeAvailable(dto.boardCode);
+
+    const board = await this.handleUniqueConflict(() =>
+      this.boardsRepository.createSampleBoard({
+        dto,
+        userId: user.userId,
+        locale: dto.locale ?? DEFAULT_SAMPLE_BOARD_LOCALE,
+      }),
+    );
+
+    if (!board) {
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -250,6 +282,7 @@ export class BoardsService {
           username: emailPrefix,
           displayName: item.user.displayName,
           avatar: item.user.avatar,
+          userCode: item.user.userCode,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
         };

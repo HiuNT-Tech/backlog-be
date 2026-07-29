@@ -50,7 +50,7 @@ model User {
   email       String    @unique
   displayName String    @map("display_name")
   avatar      String?
-  userCode    String?   @map("user_code")
+  userCode    String?   @unique(map: "uq_users_user_code") @map("user_code")
   password    String
   phone       String?
   verifyToken String?   @map("verify_token")
