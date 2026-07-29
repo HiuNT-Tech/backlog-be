@@ -25,6 +25,7 @@ import {
   ApiInvitationsControllerDocs,
   ApiListBoardInvitationsDocs,
   ApiListMyInvitationsDocs,
+  ApiResendInvitationDocs,
   ApiRevokeInvitationDocs,
 } from './decorators/invitations-swagger.decorator';
 import {
@@ -72,6 +73,18 @@ export class InvitationsController {
     @Param('invitationId', ParseIntPipe) invitationId: number,
   ) {
     return this.invitationsService.revoke(user, boardId, invitationId);
+  }
+
+  @ApiResendInvitationDocs()
+  @BoardRoles(...BOARD_MANAGER_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @Post('boards/:id/invitations/:invitationId/resend')
+  resend(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) boardId: number,
+    @Param('invitationId', ParseIntPipe) invitationId: number,
+  ) {
+    return this.invitationsService.resend(user, boardId, invitationId);
   }
 
   @ApiGetInvitationByTokenDocs()

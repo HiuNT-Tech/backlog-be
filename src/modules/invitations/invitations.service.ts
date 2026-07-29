@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
+import { BoardMemberRole, Prisma } from '@prisma/client';
 import { BusinessException } from '@common/exceptions/business.exception';
 import { ErrorCode } from '@common/exceptions/error-code';
 import { generateRandomToken } from '@common/utils/crypto.util';
@@ -81,21 +81,14 @@ export class InvitationsService {
       }),
     );
 
-    const invitationUrl =
-      invitee?.isActive === true
-        ? getAcceptInvitationUrl(this.configService, token)
-        : getRegisterInvitationUrl(this.configService, token, email);
-
-    await this.emailProvider.sendEmail(
+    await this.sendInvitationEmail({
+      board,
+      inviter,
       email,
-      `Backlog: You have been invited to join "${board.title}"`,
-      `
-        <p>Hi,</p>
-        <p><strong>${inviter.displayName ?? inviter.email}</strong> has invited you to join the board <strong>${board.title}</strong> as <strong>${dto.role}</strong>.</p>
-        <p><a href="${invitationUrl}">Open invitation</a></p>
-        <p>This invitation will expire in 7 days.</p>
-      `,
-    );
+      role: dto.role,
+      token,
+      inviteeIsActive: invitee?.isActive === true,
+    });
 
     return this.toInvitationResponse(invitation);
   }
@@ -138,9 +131,78 @@ export class InvitationsService {
       );
     }
 
-    await this.invitationsRepository.delete(invitationId);
+    const revoked = await this.invitationsRepository.revoke(invitationId);
+    if (!revoked) {
+      throw new BusinessException(
+        ErrorCode.INVITATION_ALREADY_RESPONDED,
+        HttpStatus.CONFLICT,
+      );
+    }
 
-    return this.toInvitationResponse(invitation);
+    return this.toInvitationResponse(revoked);
+  }
+
+  async resend(
+    user: JwtPayload,
+    boardId: number,
+    invitationId: number,
+  ): Promise<InvitationResponseDto> {
+    const [board, inviter] = await Promise.all([
+      this.boardsService.findById(boardId),
+      this.usersService.findByIdForAuth(user.userId),
+    ]);
+
+    if (!board) {
+      throw new BusinessException(
+        ErrorCode.BOARD_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (!inviter) {
+      throw new BusinessException(
+        ErrorCode.USER_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const invitation = await this.invitationsRepository.findByIdForBoard(
+      boardId,
+      invitationId,
+    );
+    if (!invitation) {
+      throw new BusinessException(
+        ErrorCode.INVITATION_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const invitee = await this.usersService.findByEmail(invitation.email);
+    const token = generateRandomToken();
+    const expiresAt = new Date(Date.now() + invitationTtlMs);
+
+    const resent = await this.invitationsRepository.resend(invitationId, {
+      token,
+      expiresAt,
+    });
+
+    if (!resent) {
+      throw new BusinessException(
+        ErrorCode.INVITATION_ALREADY_RESPONDED,
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    await this.sendInvitationEmail({
+      board,
+      inviter,
+      email: resent.email,
+      role: resent.role,
+      token,
+      inviteeIsActive: invitee?.isActive === true,
+    });
+
+    return this.toInvitationResponse(resent);
   }
 
   async findByToken(token: string): Promise<InvitationResponseDto> {
@@ -234,7 +296,7 @@ export class InvitationsService {
     );
 
     return invitations.map((invitation) =>
-      this.toInvitationResponse(invitation),
+      this.toInvitationResponse(invitation, { includeToken: true }),
     );
   }
 
@@ -247,10 +309,7 @@ export class InvitationsService {
       return 0;
     }
 
-    return this.invitationsRepository.bindPendingByEmail(
-      user.email,
-      user.id,
-    );
+    return this.invitationsRepository.bindPendingByEmail(user.email, user.id);
   }
 
   private async ensureEmailIsNotActiveMember(
@@ -318,8 +377,37 @@ export class InvitationsService {
     }
   }
 
+  private async sendInvitationEmail(params: {
+    board: { title: string };
+    inviter: { displayName: string | null; email: string };
+    email: string;
+    role: BoardMemberRole;
+    token: string;
+    inviteeIsActive: boolean;
+  }): Promise<void> {
+    const invitationUrl = params.inviteeIsActive
+      ? getAcceptInvitationUrl(this.configService, params.token)
+      : getRegisterInvitationUrl(
+          this.configService,
+          params.token,
+          params.email,
+        );
+
+    await this.emailProvider.sendEmail(
+      params.email,
+      `Backlog: You have been invited to join "${params.board.title}"`,
+      `
+        <p>Hi,</p>
+        <p><strong>${params.inviter.displayName ?? params.inviter.email}</strong> has invited you to join the board <strong>${params.board.title}</strong> as <strong>${params.role}</strong>.</p>
+        <p><a href="${invitationUrl}">Open invitation</a></p>
+        <p>This invitation will expire in 7 days.</p>
+      `,
+    );
+  }
+
   private toInvitationResponse(
     invitation: InvitationRecord,
+    options: { includeToken?: boolean } = {},
   ): InvitationResponseDto {
     return {
       id: invitation.id,
@@ -336,6 +424,7 @@ export class InvitationsService {
       invitedBy: invitation.invitedBy,
       createdAt: invitation.createdAt,
       updatedAt: invitation.updatedAt,
+      ...(options.includeToken ? { token: invitation.token } : {}),
     };
   }
 }

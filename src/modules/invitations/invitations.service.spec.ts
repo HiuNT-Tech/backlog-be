@@ -24,7 +24,11 @@ describe('InvitationsService', () => {
   let emailProvider: MockProxy<EmailProvider>;
 
   const board = { id: 1, title: 'Backlog Board', boardCode: 'BLB' };
-  const inviter = makeUserEntity({ id: 1, displayName: 'Inviter', email: 'inviter@example.com' });
+  const inviter = makeUserEntity({
+    id: 1,
+    displayName: 'Inviter',
+    email: 'inviter@example.com',
+  });
 
   beforeEach(() => {
     invitationsRepository = mock<InvitationsRepository>();
@@ -59,9 +63,9 @@ describe('InvitationsService', () => {
     });
 
     it('should throw BOARD_NOT_FOUND when the board does not exist', async () => {
-      boardsService.findById.mockResolvedValue(null as any);
+      boardsService.findById.mockResolvedValue(null);
 
-      const promise = service.createForBoard(user, 1, dto as any);
+      const promise = service.createForBoard(user, 1, dto);
 
       await expect(promise).rejects.toBeInstanceOf(BusinessException);
       await promise.catch((error: BusinessException) => {
@@ -76,7 +80,7 @@ describe('InvitationsService', () => {
     it('should throw USER_NOT_FOUND when the inviter does not exist', async () => {
       usersService.findByIdForAuth.mockResolvedValue(null);
 
-      const promise = service.createForBoard(user, 1, dto as any);
+      const promise = service.createForBoard(user, 1, dto);
 
       await expect(promise).rejects.toBeInstanceOf(BusinessException);
       await promise.catch((error: BusinessException) => {
@@ -89,7 +93,10 @@ describe('InvitationsService', () => {
     });
 
     it('should normalize the email before checking active membership', async () => {
-      await service.createForBoard(user, 1, { email: '  Invitee@Example.COM  ', role: BoardMemberRole.MEMBER } as any);
+      await service.createForBoard(user, 1, {
+        email: '  Invitee@Example.COM  ',
+        role: BoardMemberRole.MEMBER,
+      });
 
       expect(boardMembersService.getActiveMemberByEmail).toHaveBeenCalledWith(
         1,
@@ -98,9 +105,11 @@ describe('InvitationsService', () => {
     });
 
     it('should throw USER_ALREADY_MEMBER when the email already belongs to an active member', async () => {
-      boardMembersService.getActiveMemberByEmail.mockResolvedValue({ id: 9 } as any);
+      boardMembersService.getActiveMemberByEmail.mockResolvedValue({
+        id: 9,
+      } as any);
 
-      const promise = service.createForBoard(user, 1, dto as any);
+      const promise = service.createForBoard(user, 1, dto);
 
       await expect(promise).rejects.toBeInstanceOf(BusinessException);
       await promise.catch((error: BusinessException) => {
@@ -115,18 +124,21 @@ describe('InvitationsService', () => {
 
     it('should translate a P2002 conflict from the repository into INVITATION_ALREADY_PENDING', async () => {
       const prismaError = Object.create(
-        require('@prisma/client').Prisma.PrismaClientKnownRequestError.prototype,
+        require('@prisma/client').Prisma.PrismaClientKnownRequestError
+          .prototype,
       );
       prismaError.code = 'P2002';
       invitationsRepository.create.mockRejectedValue(prismaError);
 
-      const promise = service.createForBoard(user, 1, dto as any);
+      const promise = service.createForBoard(user, 1, dto);
 
       await expect(promise).rejects.toBeInstanceOf(BusinessException);
       await promise.catch((error: BusinessException) => {
         expect(error.getStatus()).toBe(HttpStatus.CONFLICT);
         expect(error.getResponse()).toEqual(
-          expect.objectContaining({ errorCode: ErrorCode.INVITATION_ALREADY_PENDING }),
+          expect.objectContaining({
+            errorCode: ErrorCode.INVITATION_ALREADY_PENDING,
+          }),
         );
       });
       expect(emailProvider.sendEmail).not.toHaveBeenCalled();
@@ -144,7 +156,7 @@ describe('InvitationsService', () => {
     it('should set inviteeUserId to null and use the register URL when there is no matching user', async () => {
       usersService.findByEmail.mockResolvedValue(null);
 
-      await service.createForBoard(user, 1, dto as any);
+      await service.createForBoard(user, 1, dto);
 
       expect(invitationsRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ inviteeUserId: null }),
@@ -158,7 +170,7 @@ describe('InvitationsService', () => {
         makeUserEntity({ id: 5, isActive: false, email: dto.email }),
       );
 
-      await service.createForBoard(user, 1, dto as any);
+      await service.createForBoard(user, 1, dto);
 
       expect(invitationsRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ inviteeUserId: null }),
@@ -172,7 +184,7 @@ describe('InvitationsService', () => {
         makeUserEntity({ id: 5, isActive: true, email: dto.email }),
       );
 
-      await service.createForBoard(user, 1, dto as any);
+      await service.createForBoard(user, 1, dto);
 
       expect(invitationsRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ inviteeUserId: 5 }),
@@ -183,7 +195,7 @@ describe('InvitationsService', () => {
     });
 
     it('should send the invitation email with the board title, inviter name, and role', async () => {
-      await service.createForBoard(user, 1, dto as any);
+      await service.createForBoard(user, 1, dto);
 
       expect(emailProvider.sendEmail).toHaveBeenCalledWith(
         dto.email,
@@ -203,14 +215,14 @@ describe('InvitationsService', () => {
         }),
       );
 
-      await service.createForBoard(user, 1, dto as any);
+      await service.createForBoard(user, 1, dto);
 
       const html = emailProvider.sendEmail.mock.calls[0][2];
       expect(html).toContain('inviter@example.com');
     });
 
     it('should pass boardId, role, invitedByUserId, and generated token/expiresAt to the repository', async () => {
-      await service.createForBoard(user, 1, dto as any);
+      await service.createForBoard(user, 1, dto);
 
       expect(invitationsRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -228,7 +240,7 @@ describe('InvitationsService', () => {
       const record = makeInvitationRecord({ id: 42, email: dto.email });
       invitationsRepository.create.mockResolvedValue(record);
 
-      const result = await service.createForBoard(user, 1, dto as any);
+      const result = await service.createForBoard(user, 1, dto);
 
       expect(result).toEqual({
         id: record.id,
@@ -254,10 +266,12 @@ describe('InvitationsService', () => {
 
     it('should expire pending invitations before fetching the list, in order', async () => {
       const callOrder: string[] = [];
-      invitationsRepository.expirePendingForBoard.mockImplementation(async () => {
-        callOrder.push('expire');
-        return 0;
-      });
+      invitationsRepository.expirePendingForBoard.mockImplementation(
+        async () => {
+          callOrder.push('expire');
+          return 0;
+        },
+      );
       invitationsRepository.findByBoard.mockImplementation(async () => {
         callOrder.push('find');
         return [];
@@ -265,8 +279,13 @@ describe('InvitationsService', () => {
 
       await service.listForBoard(user, 1, {});
 
-      expect(invitationsRepository.expirePendingForBoard).toHaveBeenCalledWith(1);
-      expect(invitationsRepository.findByBoard).toHaveBeenCalledWith(1, undefined);
+      expect(invitationsRepository.expirePendingForBoard).toHaveBeenCalledWith(
+        1,
+      );
+      expect(invitationsRepository.findByBoard).toHaveBeenCalledWith(
+        1,
+        undefined,
+      );
       expect(callOrder).toEqual(['expire', 'find']);
     });
 
@@ -274,7 +293,9 @@ describe('InvitationsService', () => {
       invitationsRepository.expirePendingForBoard.mockResolvedValue(0);
       invitationsRepository.findByBoard.mockResolvedValue([]);
 
-      await service.listForBoard(user, 1, { status: BoardInvitationStatus.PENDING });
+      await service.listForBoard(user, 1, {
+        status: BoardInvitationStatus.PENDING,
+      });
 
       expect(invitationsRepository.findByBoard).toHaveBeenCalledWith(
         1,
@@ -309,14 +330,14 @@ describe('InvitationsService', () => {
     const user = makeJwtPayload({ userId: 1 });
 
     it('should throw BOARD_NOT_FOUND when the board does not exist', async () => {
-      boardsService.findById.mockResolvedValue(null as any);
+      boardsService.findById.mockResolvedValue(null);
 
       await expect(service.revoke(user, 1, 5)).rejects.toMatchObject({
         status: HttpStatus.NOT_FOUND,
         response: { errorCode: ErrorCode.BOARD_NOT_FOUND },
       });
       expect(invitationsRepository.findById).not.toHaveBeenCalled();
-      expect(invitationsRepository.delete).not.toHaveBeenCalled();
+      expect(invitationsRepository.revoke).not.toHaveBeenCalled();
     });
 
     it('should throw INVITATION_NOT_FOUND when the invitation does not exist', async () => {
@@ -327,23 +348,140 @@ describe('InvitationsService', () => {
         status: HttpStatus.NOT_FOUND,
         response: { errorCode: ErrorCode.INVITATION_NOT_FOUND },
       });
-      expect(invitationsRepository.delete).not.toHaveBeenCalled();
+      expect(invitationsRepository.revoke).not.toHaveBeenCalled();
     });
 
-    it('should delete the invitation and return the mapped response built from the record found before deletion', async () => {
+    it('should throw INVITATION_ALREADY_RESPONDED when the invitation is no longer pending', async () => {
       boardsService.findById.mockResolvedValue(board as any);
-      const invitation = makeInvitationRecord({ id: 5, email: 'invitee@example.com' });
-      invitationsRepository.findById.mockResolvedValue(invitation);
-      // Repository delete() resolves the row as deleted by Prisma; the service
-      // still builds the response from the record fetched beforehand.
-      invitationsRepository.delete.mockResolvedValue(
-        makeInvitationRecord({ id: 5, email: 'should-be-ignored@example.com' }),
+      invitationsRepository.findById.mockResolvedValue(
+        makeInvitationRecord({ id: 5 }),
+      );
+      invitationsRepository.revoke.mockResolvedValue(null);
+
+      await expect(service.revoke(user, 1, 5)).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        response: { errorCode: ErrorCode.INVITATION_ALREADY_RESPONDED },
+      });
+    });
+
+    it('should mark the invitation REVOKED and return the mapped response', async () => {
+      boardsService.findById.mockResolvedValue(board as any);
+      invitationsRepository.findById.mockResolvedValue(
+        makeInvitationRecord({ id: 5, email: 'invitee@example.com' }),
+      );
+      invitationsRepository.revoke.mockResolvedValue(
+        makeInvitationRecord({
+          id: 5,
+          email: 'invitee@example.com',
+          status: BoardInvitationStatus.REVOKED,
+        }),
       );
 
       const result = await service.revoke(user, 1, 5);
 
-      expect(invitationsRepository.delete).toHaveBeenCalledWith(5);
-      expect(result).toEqual(expect.objectContaining({ id: 5, email: 'invitee@example.com' }));
+      expect(invitationsRepository.revoke).toHaveBeenCalledWith(5);
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 5,
+          email: 'invitee@example.com',
+          status: BoardInvitationStatus.REVOKED,
+        }),
+      );
+    });
+  });
+
+  describe('resend', () => {
+    const user = makeJwtPayload({ userId: 1 });
+
+    beforeEach(() => {
+      boardsService.findById.mockResolvedValue(board as any);
+      usersService.findByIdForAuth.mockResolvedValue(inviter);
+      usersService.findByEmail.mockResolvedValue(null);
+      invitationsRepository.findByIdForBoard.mockResolvedValue(
+        makeInvitationRecord({ id: 5, email: 'invitee@example.com' }),
+      );
+      invitationsRepository.resend.mockResolvedValue(
+        makeInvitationRecord({ id: 5, email: 'invitee@example.com' }),
+      );
+    });
+
+    it('should throw BOARD_NOT_FOUND when the board does not exist', async () => {
+      boardsService.findById.mockResolvedValue(null);
+
+      await expect(service.resend(user, 1, 5)).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        response: { errorCode: ErrorCode.BOARD_NOT_FOUND },
+      });
+      expect(invitationsRepository.resend).not.toHaveBeenCalled();
+    });
+
+    it('should throw USER_NOT_FOUND when the inviter does not exist', async () => {
+      usersService.findByIdForAuth.mockResolvedValue(null);
+
+      await expect(service.resend(user, 1, 5)).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        response: { errorCode: ErrorCode.USER_NOT_FOUND },
+      });
+      expect(invitationsRepository.resend).not.toHaveBeenCalled();
+    });
+
+    it('should throw INVITATION_NOT_FOUND when the invitation does not belong to the board', async () => {
+      invitationsRepository.findByIdForBoard.mockResolvedValue(null);
+
+      await expect(service.resend(user, 1, 5)).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        response: { errorCode: ErrorCode.INVITATION_NOT_FOUND },
+      });
+      expect(invitationsRepository.resend).not.toHaveBeenCalled();
+    });
+
+    it('should throw INVITATION_ALREADY_RESPONDED when the invitation is no longer pending or expired', async () => {
+      invitationsRepository.resend.mockResolvedValue(null);
+
+      await expect(service.resend(user, 1, 5)).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        response: { errorCode: ErrorCode.INVITATION_ALREADY_RESPONDED },
+      });
+      expect(emailProvider.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should generate a new token/expiry, resend the email, and return the mapped response', async () => {
+      const result = await service.resend(user, 1, 5);
+
+      expect(invitationsRepository.resend).toHaveBeenCalledWith(
+        5,
+        expect.objectContaining({
+          token: expect.any(String),
+          expiresAt: expect.any(Date),
+        }),
+      );
+      expect(emailProvider.sendEmail).toHaveBeenCalledWith(
+        'invitee@example.com',
+        expect.stringContaining(board.title),
+        expect.any(String),
+      );
+      expect(result).toEqual(
+        expect.objectContaining({ id: 5, email: 'invitee@example.com' }),
+      );
+    });
+
+    it('should use the register URL when there is no active user for the invitation email', async () => {
+      await service.resend(user, 1, 5);
+
+      const html = emailProvider.sendEmail.mock.calls[0][2];
+      expect(html).toContain('/register?invitationToken=');
+    });
+
+    it('should use the accept URL when the invitation email belongs to an active user', async () => {
+      usersService.findByEmail.mockResolvedValue(
+        makeUserEntity({ id: 5, isActive: true, email: 'invitee@example.com' }),
+      );
+
+      await service.resend(user, 1, 5);
+
+      const html = emailProvider.sendEmail.mock.calls[0][2];
+      expect(html).toContain('/invitations/');
+      expect(html).not.toContain('/register?invitationToken=');
     });
   });
 
@@ -360,7 +498,7 @@ describe('InvitationsService', () => {
     it('should throw BOARD_NOT_FOUND when the board no longer exists', async () => {
       const invitation = makeInvitationRecord({ boardId: 7 });
       invitationsRepository.findByToken.mockResolvedValue(invitation);
-      boardsService.findById.mockResolvedValue(null as any);
+      boardsService.findById.mockResolvedValue(null);
 
       await expect(service.findByToken('token')).rejects.toMatchObject({
         status: HttpStatus.NOT_FOUND,
@@ -494,7 +632,10 @@ describe('InvitationsService', () => {
 
       expect(invitationsRepository.accept).toHaveBeenCalledWith(invitation, 10);
       expect(result).toEqual(
-        expect.objectContaining({ id: 8, status: BoardInvitationStatus.ACCEPTED }),
+        expect.objectContaining({
+          id: 8,
+          status: BoardInvitationStatus.ACCEPTED,
+        }),
       );
     });
   });
@@ -569,7 +710,10 @@ describe('InvitationsService', () => {
 
       expect(invitationsRepository.decline).toHaveBeenCalledWith(9);
       expect(result).toEqual(
-        expect.objectContaining({ id: 9, status: BoardInvitationStatus.DECLINED }),
+        expect.objectContaining({
+          id: 9,
+          status: BoardInvitationStatus.DECLINED,
+        }),
       );
     });
   });
@@ -579,10 +723,12 @@ describe('InvitationsService', () => {
 
     it('should expire pending invitations for the user before fetching the list, in order', async () => {
       const callOrder: string[] = [];
-      invitationsRepository.expirePendingForUser.mockImplementation(async () => {
-        callOrder.push('expire');
-        return 0;
-      });
+      invitationsRepository.expirePendingForUser.mockImplementation(
+        async () => {
+          callOrder.push('expire');
+          return 0;
+        },
+      );
       invitationsRepository.findPendingForUser.mockImplementation(async () => {
         callOrder.push('find');
         return [];
@@ -601,17 +747,24 @@ describe('InvitationsService', () => {
       expect(callOrder).toEqual(['expire', 'find']);
     });
 
-    it('should map each repository record to an InvitationResponseDto', async () => {
+    it('should map each repository record to an InvitationResponseDto including its token', async () => {
       invitationsRepository.expirePendingForUser.mockResolvedValue(0);
-      const recordA = makeInvitationRecord({ id: 1 });
-      const recordB = makeInvitationRecord({ id: 2 });
-      invitationsRepository.findPendingForUser.mockResolvedValue([recordA, recordB]);
+      const recordA = makeInvitationRecord({ id: 1, token: 'token-a' });
+      const recordB = makeInvitationRecord({ id: 2, token: 'token-b' });
+      invitationsRepository.findPendingForUser.mockResolvedValue([
+        recordA,
+        recordB,
+      ]);
 
       const result = await service.listMine(user);
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual(expect.objectContaining({ id: 1 }));
-      expect(result[1]).toEqual(expect.objectContaining({ id: 2 }));
+      expect(result[0]).toEqual(
+        expect.objectContaining({ id: 1, token: 'token-a' }),
+      );
+      expect(result[1]).toEqual(
+        expect.objectContaining({ id: 2, token: 'token-b' }),
+      );
     });
 
     it('should return an empty array when there are no pending invitations', async () => {
