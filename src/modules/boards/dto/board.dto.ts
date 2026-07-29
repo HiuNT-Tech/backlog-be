@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -16,6 +17,11 @@ import {
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { BoardMemberRole, BoardType } from '@prisma/client';
 import { normalizeString } from '@common/utils/string.util';
+import {
+  DEFAULT_SAMPLE_BOARD_LOCALE,
+  SAMPLE_BOARD_LOCALES,
+  type SampleBoardLocale,
+} from '../constants';
 
 const normalizeOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
@@ -24,6 +30,14 @@ const normalizeOptionalString = (value: unknown): string | undefined => {
 
   return normalizeString(value);
 };
+
+/**
+ * `boardCode` luôn được so khớp dạng in hoa (`@Matches(/^[A-Z0-9_-]+$/)`), nên
+ * chuẩn hoá trước khi validate để người dùng gõ chữ thường vẫn nhận. Giá trị
+ * không phải string được trả lại nguyên vẹn cho `@IsString()` báo lỗi.
+ */
+const normalizeBoardCode = (value: unknown): unknown =>
+  typeof value === 'string' ? value.trim().toUpperCase() : value;
 
 export class ReorderColumnDto {
   @ApiProperty({ example: 1 })
@@ -58,9 +72,7 @@ export class CreateBoardDto {
     description:
       'Project key used to build card codes. Uppercase letters, numbers, and underscores only.',
   })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(({ value }) => normalizeBoardCode(value))
   @IsString()
   @MinLength(2)
   @MaxLength(16)
@@ -101,9 +113,7 @@ export class DuplicateBoardDto {
     description:
       'Project key used to build card codes of the new board. Uppercase letters, numbers, and underscores only.',
   })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(({ value }) => normalizeBoardCode(value))
   @IsString()
   @MinLength(2)
   @MaxLength(16)
@@ -132,6 +142,46 @@ export class DuplicateBoardDto {
   @IsOptional()
   @IsEnum(BoardType)
   type?: BoardType;
+}
+
+export class CreateSampleBoardDto {
+  @ApiProperty({
+    example: 'Sample Project',
+    minLength: 3,
+    maxLength: 50,
+  })
+  @Transform(({ value }) => normalizeOptionalString(value))
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  title: string;
+
+  @ApiProperty({
+    example: 'SAMPLE',
+    minLength: 2,
+    maxLength: 16,
+    description:
+      'Project key used to build card codes. Uppercase letters, numbers, and underscores only.',
+  })
+  @Transform(({ value }) => normalizeBoardCode(value))
+  @IsString()
+  @MinLength(2)
+  @MaxLength(16)
+  @Matches(/^[A-Z0-9_-]+$/, {
+    message:
+      'boardCode must contain only uppercase letters, numbers, underscores, and hyphens',
+  })
+  boardCode: string;
+
+  @ApiPropertyOptional({
+    enum: [...SAMPLE_BOARD_LOCALES],
+    example: DEFAULT_SAMPLE_BOARD_LOCALE,
+    description:
+      'Ngôn ngữ của nội dung ticket mẫu. Bỏ trống dùng mặc định. Chỉ ảnh hưởng chữ người dùng đọc — tên cột và loại issue luôn giữ tiếng Anh.',
+  })
+  @IsOptional()
+  @IsIn(SAMPLE_BOARD_LOCALES)
+  locale?: SampleBoardLocale;
 }
 
 export class UpdateBoardDto extends PartialType(CreateBoardDto) {

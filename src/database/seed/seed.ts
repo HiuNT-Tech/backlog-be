@@ -1,8 +1,14 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, BoardType, BoardMemberRole, StatusColor } from '@prisma/client';
+import {
+  PrismaClient,
+  BoardType,
+  BoardMemberRole,
+  StatusColor,
+} from '@prisma/client';
 import { hashPassword } from '@common/utils/crypto.util';
+import { buildUserCode } from '@common/utils/user-code.util';
 import { buildPostgresUrl } from '@config/database-url.util';
 
 // ── Seed constants ────────────────────────────────────────────────
@@ -58,7 +64,17 @@ async function main(): Promise<void> {
         isActive: true,
       },
     });
-    console.log(`✓ User: ${user.email} (id: ${user.id})`);
+    // `userCode` sinh từ id nên phải gán sau khi có bản ghi. Chỉ gán khi còn
+    // trống để seed chạy lại nhiều lần vẫn cho cùng kết quả.
+    if (!user.userCode) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { userCode: buildUserCode(user.id) },
+      });
+    }
+    console.log(
+      `✓ User: ${user.email} (id: ${user.id}, code: ${buildUserCode(user.id)})`,
+    );
 
     // 2. Seed board
     const board = await prisma.board.upsert({
@@ -72,7 +88,9 @@ async function main(): Promise<void> {
         nextCardNumber: 1, // Will be updated after cards are created
       },
     });
-    console.log(`✓ Board: ${board.title} (id: ${board.id}, code: ${board.boardCode})`);
+    console.log(
+      `✓ Board: ${board.title} (id: ${board.id}, code: ${board.boardCode})`,
+    );
 
     // 3. Seed board member
     await prisma.boardMember.upsert({
@@ -104,7 +122,9 @@ async function main(): Promise<void> {
         },
       });
       columns[col.title] = { id: column.id };
-      console.log(`✓ Column: ${col.title} (id: ${column.id}, pos: ${col.position})`);
+      console.log(
+        `✓ Column: ${col.title} (id: ${column.id}, pos: ${col.position})`,
+      );
     }
 
     // 5. Seed issue types
@@ -145,7 +165,8 @@ async function main(): Promise<void> {
         cardNumber: 1,
         cardCode: `${BOARD.boardCode}-1`,
         title: 'Setup project structure',
-        description: 'Initialize the project with NestJS and configure the basic folder structure.',
+        description:
+          'Initialize the project with NestJS and configure the basic folder structure.',
         columnTitle: 'To Do',
         issueTypeName: 'Task',
         versionId: version.id,
@@ -155,7 +176,8 @@ async function main(): Promise<void> {
         cardNumber: 2,
         cardCode: `${BOARD.boardCode}-2`,
         title: 'Fix login redirect bug',
-        description: 'After login, user is not redirected to the dashboard correctly.',
+        description:
+          'After login, user is not redirected to the dashboard correctly.',
         columnTitle: 'In Progress',
         issueTypeName: 'Bug',
         versionId: null,

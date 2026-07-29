@@ -1,5 +1,6 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { PrismaService } from '@database/prisma/prisma.service';
+import { buildUserCode } from '@common/utils/user-code.util';
 import { UsersRepository } from './users.repository';
 import { UserEntity } from '../entities/user.entity';
 import { makeUserEntity } from '../../../../test/factories/user.factory';
@@ -144,9 +145,25 @@ describe('UsersRepository', () => {
   });
 
   describe('createUser', () => {
-    it('should create a user with the provided displayName trimmed', async () => {
-      const created = makeRawRow({ email: 'new@example.com' });
+    /**
+     * `createUser` chạy create + update trong một transaction: `userCode` sinh
+     * từ id nên chỉ gán được sau khi bản ghi tồn tại.
+     */
+    const mockCreateFlow = (id: number, email: string) => {
+      const created = makeRawRow({ id, email });
+      prisma.$transaction.mockImplementation(((
+        callback: (tx: typeof prisma) => unknown,
+      ) => callback(prisma)) as never);
       (prisma.user.create as jest.Mock).mockResolvedValue(created);
+      (prisma.user.update as jest.Mock).mockResolvedValue({
+        ...created,
+        userCode: buildUserCode(id),
+      });
+      return created;
+    };
+
+    it('should create a user with the provided displayName trimmed', async () => {
+      mockCreateFlow(1, 'new@example.com');
 
       const result = await repository.createUser({
         email: 'new@example.com',
@@ -161,19 +178,59 @@ describe('UsersRepository', () => {
           email: 'new@example.com',
           displayName: 'New User',
           avatar: null,
-          userCode: null,
           password: 'hashed',
           phone: '0123456789',
           verifyToken: 'token',
           isActive: false,
         },
       });
-      expect(result).toEqual(created);
+      expect(result.email).toBe('new@example.com');
+    });
+
+    it('should assign a userCode derived from the new user id', async () => {
+      mockCreateFlow(42, 'coded@example.com');
+
+      const result = await repository.createUser({
+        email: 'coded@example.com',
+        password: 'hashed',
+        verifyToken: 'token',
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 42 },
+        data: { userCode: 'U-000042' },
+      });
+      expect(result.userCode).toBe('U-000042');
+    });
+
+    it('should not send userCode on the insert, since the id is not known yet', async () => {
+      mockCreateFlow(7, 'jane@example.com');
+
+      await repository.createUser({
+        email: 'jane@example.com',
+        password: 'hashed',
+        verifyToken: 'token',
+      });
+
+      const insertArgs = prisma.user.create.mock.calls[0][0];
+      expect(insertArgs.data).not.toHaveProperty('userCode');
+    });
+
+    it('should insert and assign the code inside a single transaction', async () => {
+      mockCreateFlow(5, 'jane@example.com');
+
+      await repository.createUser({
+        email: 'jane@example.com',
+        password: 'hashed',
+        verifyToken: 'token',
+      });
+
+      // Nếu tách ra ngoài transaction, lỗi giữa 2 bước sẽ để lại user không có mã.
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });
 
     it('should default displayName to the email local part when displayName is missing', async () => {
-      const created = makeRawRow({ email: 'jane@example.com' });
-      (prisma.user.create as jest.Mock).mockResolvedValue(created);
+      mockCreateFlow(1, 'jane@example.com');
 
       await repository.createUser({
         email: 'jane@example.com',
@@ -189,8 +246,7 @@ describe('UsersRepository', () => {
     });
 
     it('should default displayName to the email local part when displayName is blank whitespace', async () => {
-      const created = makeRawRow({ email: 'jane@example.com' });
-      (prisma.user.create as jest.Mock).mockResolvedValue(created);
+      mockCreateFlow(1, 'jane@example.com');
 
       await repository.createUser({
         email: 'jane@example.com',
@@ -207,8 +263,7 @@ describe('UsersRepository', () => {
     });
 
     it('should default phone to null when not provided', async () => {
-      const created = makeRawRow({ email: 'jane@example.com' });
-      (prisma.user.create as jest.Mock).mockResolvedValue(created);
+      mockCreateFlow(1, 'jane@example.com');
 
       await repository.createUser({
         email: 'jane@example.com',
@@ -362,7 +417,11 @@ describe('UsersRepository', () => {
 
     it('should deactivate the user and set deletedAt when active', async () => {
       const existing = makeRawRow({ id: 1 });
-      const updated = makeRawRow({ id: 1, isActive: false, deletedAt: new Date() });
+      const updated = makeRawRow({
+        id: 1,
+        isActive: false,
+        deletedAt: new Date(),
+      });
       (prisma.user.findFirst as jest.Mock).mockResolvedValue(existing);
       (prisma.user.update as jest.Mock).mockResolvedValue(updated);
 

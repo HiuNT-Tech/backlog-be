@@ -101,6 +101,28 @@ export function ApiDuplicateBoardDocs() {
   );
 }
 
+export function ApiCreateSampleBoardDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Create sample board',
+      description:
+        'Create a ready-to-explore sample board so users new to the tool can see how a real project is organised. Seeds the default columns plus sample issue types, milestones and tickets (some assigned to the caller, one already overdue). The sample content lives in code — no source board is required. The current user becomes the sole ADMIN.',
+    }),
+    ...authDocs,
+    ApiItemCreatedResponse(BoardResponseDto, {
+      description: 'Sample board created.',
+    }),
+    ApiBadRequestResponse({
+      description: 'Invalid payload.',
+      type: ApiErrorResponseDto,
+    }),
+    ApiConflictResponse({
+      description: 'boardCode already exists.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
 export function ApiListBoardsDocs() {
   return applyDecorators(
     ApiOperation({

@@ -126,6 +126,15 @@ export class BoardUserResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: null })
   avatar: string | null;
 
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: 'U-000042',
+    description:
+      'Mã người dùng công khai, dùng để tìm thành viên mà không cần email. Null với user tạo trước khi tính năng này có.',
+  })
+  userCode: string | null;
+
   @ApiProperty({ example: '2026-05-25T00:00:00.000Z' })
   createdAt: Date;
 

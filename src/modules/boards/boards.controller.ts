@@ -21,6 +21,7 @@ import { BoardRolesGuard } from './guards/board-roles.guard';
 import {
   ApiBoardsControllerDocs,
   ApiCreateBoardDocs,
+  ApiCreateSampleBoardDocs,
   ApiDuplicateBoardDocs,
   ApiGetBoardDocs,
   ApiGetBoardUsersDocs,
@@ -31,6 +32,7 @@ import {
 } from './decorators/boards-swagger.decorator';
 import {
   CreateBoardDto,
+  CreateSampleBoardDto,
   DuplicateBoardDto,
   GetBoardDetailQueryDto,
   GetBoardUsersQueryDto,
@@ -56,6 +58,16 @@ export class BoardsController {
   @Post()
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateBoardDto) {
     return this.boardsService.create(user, dto);
+  }
+
+  @ApiCreateSampleBoardDocs()
+  @HttpCode(HttpStatus.CREATED)
+  @Post('sample')
+  createSample(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateSampleBoardDto,
+  ) {
+    return this.boardsService.createSample(user, dto);
   }
 
   @ApiGetBoardDocs()
