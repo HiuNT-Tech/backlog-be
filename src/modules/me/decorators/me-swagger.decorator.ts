@@ -11,6 +11,7 @@ import {
 } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '@common/dto/response.dto';
 import { ApiItemResponse } from '@common/decorators/api-response.decorator';
+import { ApiSingleFileUploadDocs, IMAGE_MIME_TYPES } from '@common/upload';
 import { UserResponseDto } from '@modules/users/dto/user-response.dto';
 
 const authDocs = [
@@ -56,6 +57,28 @@ export function ApiUpdateProfileDocs() {
     }),
     ApiBadRequestResponse({
       description: 'Invalid payload.',
+      type: ApiErrorResponseDto,
+    }),
+  );
+}
+
+export function ApiUploadAvatarDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Upload my avatar',
+      description:
+        'Upload an image file and set it as the current user avatar.',
+    }),
+    ...authDocs,
+    ApiSingleFileUploadDocs({
+      fieldName: 'avatar',
+      allowedMimeTypes: IMAGE_MIME_TYPES,
+    }),
+    ApiItemResponse(UserResponseDto, {
+      description: 'Updated profile with the new avatar URL.',
+    }),
+    ApiBadRequestResponse({
+      description: 'Missing file, unsupported type, or file too large.',
       type: ApiErrorResponseDto,
     }),
   );

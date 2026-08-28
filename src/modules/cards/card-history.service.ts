@@ -18,12 +18,6 @@ type CardSnapshot = {
   version: { name: string } | null;
 };
 
-const PRIORITY_LABELS: Record<number, string> = {
-  1: 'Thấp',
-  2: 'Trung bình',
-  3: 'Cao',
-};
-
 // Giữ textDiff.minLength mặc định (60): field ngắn (tiêu đề, ngày, nhãn)
 // ra cặp [cũ, mới] hiển thị gọn; chỉ text dài (mô tả) mới diff theo
 // từ/ký tự.
@@ -72,30 +66,24 @@ export class CardHistoryService {
     }
   }
 
-  // Key là nhãn hiển thị — FE render delta trực tiếp nên tên field trong
-  // delta chính là tên field người dùng nhìn thấy.
+  // Key phải là tên field ổn định, không phụ thuộc ngôn ngữ — FE map key
+  // sang nhãn hiển thị theo i18n hiện tại của người xem khi render delta.
+  // Giá trị cũng giữ nguyên dạng thô (vd priority là số) để FE tự dịch,
+  // tránh cứng ngôn ngữ ở BE.
   private toDiffable(snapshot: CardSnapshot) {
     return {
-      'Tiêu đề': snapshot.title,
-      'Mô tả': snapshot.description ?? '',
-      'Độ ưu tiên': this.toPriorityLabel(snapshot.priority),
-      'Trạng thái': snapshot.column.title,
-      'Người thực hiện': snapshot.assignee?.displayName ?? null,
-      'Loại issue': snapshot.issueType?.name ?? null,
-      Milestone: snapshot.version?.name ?? null,
-      'Ngày bắt đầu': this.toDateLabel(snapshot.startDate),
-      'Hạn chót': this.toDateLabel(snapshot.dueDate),
-      'Estimated hours': snapshot.estimatedHours,
-      'Actual hours': snapshot.actualHours,
+      title: snapshot.title,
+      description: snapshot.description ?? '',
+      priority: snapshot.priority,
+      status: snapshot.column.title,
+      assignee: snapshot.assignee?.displayName ?? null,
+      issueType: snapshot.issueType?.name ?? null,
+      milestone: snapshot.version?.name ?? null,
+      startDate: this.toDateLabel(snapshot.startDate),
+      dueDate: this.toDateLabel(snapshot.dueDate),
+      estimatedHours: snapshot.estimatedHours,
+      actualHours: snapshot.actualHours,
     };
-  }
-
-  private toPriorityLabel(priority: number | null): string | null {
-    if (priority === null) {
-      return null;
-    }
-
-    return PRIORITY_LABELS[priority] ?? String(priority);
   }
 
   private toDateLabel(date: Date | null): string | null {

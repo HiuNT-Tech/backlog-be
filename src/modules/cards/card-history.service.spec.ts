@@ -56,7 +56,7 @@ describe('CardHistoryService', () => {
       [],
       CommentType.SYSTEM,
     );
-    expect(getStoredDelta()['Tiêu đề']).toEqual(['Old title', 'New title']);
+    expect(getStoredDelta()['title']).toEqual(['Old title', 'New title']);
   });
 
   it('should store a text diff for long description changes', async () => {
@@ -71,7 +71,7 @@ describe('CardHistoryService', () => {
       makeSnapshot({ description: `${longBase}\nThird line added.` }),
     );
 
-    const delta = getStoredDelta()['Mô tả'] as unknown[];
+    const delta = getStoredDelta()['description'] as unknown[];
     // Định dạng text-diff của jsondiffpatch: [unidiff string, 0, 2]
     expect(delta).toHaveLength(3);
     expect(delta[1]).toBe(0);
@@ -87,7 +87,10 @@ describe('CardHistoryService', () => {
       makeSnapshot({ description: 'Short after' }),
     );
 
-    expect(getStoredDelta()['Mô tả']).toEqual(['Short before', 'Short after']);
+    expect(getStoredDelta()['description']).toEqual([
+      'Short before',
+      'Short after',
+    ]);
   });
 
   it('should merge multiple changed fields into a single comment', async () => {
@@ -104,9 +107,9 @@ describe('CardHistoryService', () => {
 
     expect(commentsRepository.create).toHaveBeenCalledTimes(1);
     const delta = getStoredDelta();
-    expect(delta['Độ ưu tiên']).toEqual(['Trung bình', 'Cao']);
-    expect(delta['Người thực hiện']).toEqual(['Alice', 'Bob']);
-    expect(delta['Trạng thái']).toEqual(['To Do', 'Doing']);
+    expect(delta['priority']).toEqual([2, 3]);
+    expect(delta['assignee']).toEqual(['Alice', 'Bob']);
+    expect(delta['status']).toEqual(['To Do', 'Doing']);
   });
 
   it('should record cleared fields as a change to null', async () => {
@@ -118,8 +121,8 @@ describe('CardHistoryService', () => {
     );
 
     const delta = getStoredDelta();
-    expect(delta['Người thực hiện']).toEqual(['Alice', null]);
-    expect(delta['Milestone']).toEqual(['v1.0', null]);
+    expect(delta['assignee']).toEqual(['Alice', null]);
+    expect(delta['milestone']).toEqual(['v1.0', null]);
   });
 
   it('should format dates as YYYY-MM-DD in the delta', async () => {
@@ -130,7 +133,7 @@ describe('CardHistoryService', () => {
       makeSnapshot({ dueDate: new Date('2026-07-20T00:00:00Z') }),
     );
 
-    expect(getStoredDelta()['Hạn chót']).toEqual(['2026-07-15', '2026-07-20']);
+    expect(getStoredDelta()['dueDate']).toEqual(['2026-07-15', '2026-07-20']);
   });
 
   it('should swallow repository errors instead of failing the update', async () => {
