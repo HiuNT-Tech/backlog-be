@@ -1,6 +1,8 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { UsersService } from '@modules/users/users.service';
 import { UserResponseDto } from '@modules/users/dto/user-response.dto';
+import { UploadedFile } from '@common/upload';
+import { StorageService } from '@shared/storage/storage.service';
 import { MeService } from './me.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -9,10 +11,12 @@ import { makeJwtPayload } from '../../../test/factories/jwt-payload.factory';
 describe('MeService', () => {
   let service: MeService;
   let usersService: MockProxy<UsersService>;
+  let storageService: MockProxy<StorageService>;
 
   beforeEach(() => {
     usersService = mock<UsersService>();
-    service = new MeService(usersService);
+    storageService = mock<StorageService>();
+    service = new MeService(usersService, storageService);
   });
 
   describe('getProfile', () => {
@@ -63,6 +67,38 @@ describe('MeService', () => {
         'newPassword123',
       );
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('uploadAvatar', () => {
+    it('should upload the file to storage then update the user avatar with the resulting url', async () => {
+      const user = makeJwtPayload({ userId: 7 });
+      const file = {
+        originalname: 'avatar.png',
+        mimetype: 'image/png',
+        buffer: Buffer.from('fake-image'),
+      } as UploadedFile;
+      storageService.upload.mockResolvedValue({
+        key: 'avatar-key.png',
+        url: 'https://storage.example.com/avatar-key.png',
+      });
+      const response = {
+        id: 7,
+        avatar: 'https://storage.example.com/avatar-key.png',
+      } as UserResponseDto;
+      usersService.updateProfile.mockResolvedValue(response);
+
+      const result = await service.uploadAvatar(user, file);
+
+      expect(storageService.upload).toHaveBeenCalledWith({
+        filename: 'avatar.png',
+        mimeType: 'image/png',
+        buffer: file.buffer,
+      });
+      expect(usersService.updateProfile).toHaveBeenCalledWith(7, {
+        avatar: 'https://storage.example.com/avatar-key.png',
+      });
+      expect(result).toBe(response);
     });
   });
 });
